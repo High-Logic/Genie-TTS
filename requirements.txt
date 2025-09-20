@@ -1,5 +1,6 @@
 onnx
-onnxruntime
+onnxruntime==1.22.1
+patchelf; sys_platform == "linux" or sys_platform == "darwin"
 numpy
 pyopenjtalk
 soundfile

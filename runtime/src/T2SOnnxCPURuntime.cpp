@@ -14,7 +14,6 @@ constexpr int HEAD_NUM = 24;
 constexpr int KV_CACHE_PREPARED_LENGTH = 512;
 #define CPP_PRINT(msg) py::print("[C++] " + std::string(msg))
 using OrtValueShapeType = std::vector<int64_t>;
-using OrtSessionRunNameType = std::vector<const char*>;
 
 template <typename MajorType, typename KVType=MajorType>
 class T2SOnnxCPURuntime {
@@ -265,6 +264,7 @@ private:
 };
 
 using T2SOnnxCPURuntimeF32 = T2SOnnxCPURuntime<float, float>;
+using T2SOnnxCPURuntimeF16 = T2SOnnxCPURuntime<uint16_t, uint16_t>; // Using uint16_t to represent float16
 
 #define BIND_TEMPLATE_CLASS(className, pyName, major_type, kv_type) \
     py::class_<className<major_type, kv_type>>(m, pyName) \
@@ -275,8 +275,9 @@ using T2SOnnxCPURuntimeF32 = T2SOnnxCPURuntime<float, float>;
         .def("run", &className<major_type, kv_type>::run) \
         .def("reset", &className<major_type, kv_type>::reset)
 
-// pybind11 模块定义
+
 PYBIND11_MODULE(T2SOnnxCPURuntime, m) {
-    m.doc() = "pybind11 example plugin";  // 模块文档
+    m.doc() = "T2SOnnxCPURuntime Implementations"; 
     BIND_TEMPLATE_CLASS(T2SOnnxCPURuntime, "T2SOnnxCPURuntimeF32", float, float);
+    BIND_TEMPLATE_CLASS(T2SOnnxCPURuntime, "T2SOnnxCPURuntimeF16", uint16_t, uint16_t);
 }

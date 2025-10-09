@@ -12,6 +12,7 @@ import pyaudio
 import logging
 
 from ..Japanese.Split import split_japanese_text
+from ..Chinese.Split import split_chinese_text
 from ..Core.Inference import tts_client
 from ..ModelManager import model_manager
 from ..Utils.Shared import context
@@ -200,7 +201,11 @@ class TTSPlayer:
                 self._start_time = time.time()
 
             if self._split:
-                sentences = split_japanese_text(text_chunk.strip())
+                language = model_manager.character_model_languages.get(context.current_speaker, 'japanese')
+                if language == 'chinese':
+                    sentences = split_chinese_text(text_chunk.strip())
+                else:
+                    sentences = split_japanese_text(text_chunk.strip())
                 for sentence in sentences:
                     self._text_queue.put(sentence)
             else:

@@ -7,8 +7,8 @@ import onnxruntime
 from onnxruntime import InferenceSession
 from typing import Optional
 import numpy as np
-# from importlib.resources import files
 from huggingface_hub import hf_hub_download
+from transformers import AutoTokenizer
 
 from .Utils.Shared import context
 # from .Utils.Constants import PACKAGE_NAME
@@ -37,7 +37,7 @@ class GSVModel:
     T2S_FIRST_STAGE_DECODER: InferenceSession
     T2S_STAGE_DECODER: InferenceSession
     VITS: InferenceSession
-    language: str = 'japanese'
+    language: str
 
 
 def convert_bin_to_fp32(
@@ -50,7 +50,7 @@ def convert_bin_to_fp32(
 
 def download_model(filename: str, repo_id: str = 'High-Logic/Genie') -> Optional[str]:
     try:
-       
+        # package_root = files(PACKAGE_NAME)
         # model_dir = str(package_root / "Data")
         # os.makedirs(model_dir, exist_ok=True)
 
@@ -93,6 +93,8 @@ class ModelManager:
         self.providers = ["CPUExecutionProvider"]
 
         self.cn_hubert: Optional[InferenceSession] = None
+        self.roberta_model: Optional[InferenceSession] = None
+        self.roberta_tokenizer = None
 
     def load_cn_hubert(self) -> bool:
         model_path: Optional[str] = os.getenv("HUBERT_MODEL_PATH")
@@ -117,14 +119,44 @@ class ModelManager:
             )
         return False
 
+    def load_roberta_model(self) -> bool:
+        if self.roberta_model and self.roberta_tokenizer:
+            return True
+
+        # Load Tokenizer
+        try:
+            self.roberta_tokenizer = AutoTokenizer.from_pretrained("hfl/chinese-roberta-wwm-ext", trust_remote_code=True)
+            logger.info("Successfully loaded RoBERTa tokenizer.")
+        except Exception as e:
+            logger.error(f"Error: Failed to load RoBERTa tokenizer. Details: {e}")
+            return False
+
+        # Load ONNX Model
+        model_path: str = "onnx_model/chinese-roberta-wwm-ext.onnx"
+        if not os.path.exists(model_path):
+            logger.error(f"Error: RoBERTa ONNX model '{model_path}' not found. Please run the conversion script first.")
+            return False
+        
+        try:
+            self.roberta_model = onnxruntime.InferenceSession(model_path,
+                                                              providers=self.providers,
+                                                              sess_options=SESS_OPTIONS)
+            logger.info("Successfully loaded RoBERTa ONNX model.")
+            return True
+        except Exception as e:
+            logger.error(f"Error: Failed to load RoBERTa ONNX model '{model_path}'. Details: {e}")
+            return False
+
     def get(self, character_name: str) -> Optional[GSVModel]:
         if character_name in self.character_to_model:
             model_map = self.character_to_model[character_name]
+            language = self.character_model_languages.get(character_name, 'japanese')
             return GSVModel(
                 T2S_ENCODER=model_map[_GSVModelFile.T2S_ENCODER],
                 T2S_FIRST_STAGE_DECODER=model_map[_GSVModelFile.T2S_FIRST_STAGE_DECODER],
                 T2S_STAGE_DECODER=model_map[_GSVModelFile.T2S_STAGE_DECODER],
-                VITS=model_map[_GSVModelFile.VITS]
+                VITS=model_map[_GSVModelFile.VITS],
+                language=language
             )
         if character_name in self.character_model_paths:
             model_dir = self.character_model_paths[character_name]
@@ -139,12 +171,16 @@ class ModelManager:
         character_name = character_name.lower()
         return character_name in self.character_model_paths
 
-    def load_character(self, character_name: str, model_dir: str) -> bool:
+    def load_character(self, character_name: str, model_dir: str, language: str = 'japanese') -> bool:
         character_name = character_name.lower()
         if character_name in self.character_to_model:
             logger.info(f"Character '{character_name}' is already in cache; no need to reload.")
             _ = self.character_to_model[character_name]  # 访问一次以更新其在LRU缓存中的位置
             return True
+
+        if language == 'chinese':
+            if not self.roberta_model:
+                self.load_roberta_model()
 
         convert_bins_to_fp32(model_dir)
 
@@ -171,6 +207,7 @@ class ModelManager:
 
         self.character_to_model[character_name] = model_dict
         self.character_model_paths[character_name] = model_dir
+        self.character_model_languages[character_name] = language
 
         if not context.current_speaker:
             context.current_speaker = character_name
@@ -187,22 +224,17 @@ class ModelManager:
     def clean_cache(self) -> None:
         temp_weights: list[str] = [_GSVModelFile.T2S_DECODER_WEIGHT_FP32, _GSVModelFile.VITS_WEIGHT_FP32]
         deleted_any: bool = False
-        for character, model_dir in self.character_model_paths.items():
-            for filename in temp_weights:
-                filepath: str = os.path.join(model_dir, filename)
-                if os.path.exists(filepath):
-                    try:
+        try:
+            for character, model_dir in self.character_model_paths.items():
+                for filename in temp_weights:
+                    filepath: str = os.path.join(model_dir, filename)
+                    if os.path.exists(filepath):
                         os.remove(filepath)
                         deleted_any = True
-                    except PermissionError:
-                        logger.warning(
-                            f"Could not delete temporary file '{filepath}'. "
-                            f"It is likely still in use and will be removed on the next run."
-                        )
-                    except Exception as e:
-                        logger.error(f"Failed to delete temporary weight file: {e}")
-        if deleted_any:
-            logger.info("Temporary weight files have been successfully cleaned up.")
+            if deleted_any:
+                logger.info("All temporary weight files have been successfully deleted.")
+        except Exception as e:
+            logger.error(f"Failed to delete temporary weight file: {e}")
 
 
 model_manager: ModelManager = ModelManager()

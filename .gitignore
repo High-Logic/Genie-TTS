@@ -1,5 +1,11 @@
 # .gitignore
 
+# Ignore large model assets
+onnx_model/
+
+# Ignore test scripts
+test_chinese.py
+
 OpenVenv.bat
 Config.txt
 chinese-hubert-base.onnx

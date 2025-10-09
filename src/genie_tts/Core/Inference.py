@@ -5,7 +5,10 @@ import threading
 
 from ..Audio.ReferenceAudio import ReferenceAudio
 from ..Japanese.JapaneseG2P import japanese_to_phones
+from ..Chinese.ChineseG2P import get_phonemes_and_bert
 from ..Utils.Constants import BERT_FEATURE_DIM
+from ..ModelManager import model_manager
+from ..Utils.Shared import context
 
 
 class GENIE:
@@ -21,8 +24,21 @@ class GENIE:
             stage_decoder: ort.InferenceSession,
             vocoder: ort.InferenceSession,
     ) -> Optional[np.ndarray]:
-        text_seq: np.ndarray = np.array([japanese_to_phones(text)], dtype=np.int64)
-        text_bert = np.zeros((text_seq.shape[1], BERT_FEATURE_DIM), dtype=np.float32)
+        language = model_manager.character_model_languages.get(context.current_speaker, 'japanese')
+        if language == 'chinese':
+            if model_manager.roberta_model and model_manager.roberta_tokenizer:
+                text_seq, text_bert = get_phonemes_and_bert(
+                    text, model_manager.roberta_tokenizer, model_manager.roberta_model
+                )
+            else:
+                # Fallback if RoBERTa is not available
+                from ..Chinese.ChineseG2P import chinese_to_phones as chinese_to_phones_fn
+                text_seq = np.array([chinese_to_phones_fn(text)], dtype=np.int64)
+                text_bert = np.zeros((text_seq.shape[1], BERT_FEATURE_DIM), dtype=np.float32)
+        else:
+            text_seq = np.array([japanese_to_phones(text)], dtype=np.int64)
+            text_bert = np.zeros((text_seq.shape[1], BERT_FEATURE_DIM), dtype=np.float32)
+        
         semantic_tokens: np.ndarray = self.t2s_cpu(
             ref_seq=prompt_audio.phonemes_seq,
             ref_bert=prompt_audio.text_bert,

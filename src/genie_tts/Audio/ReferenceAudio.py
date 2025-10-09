@@ -1,8 +1,10 @@
 from ..Utils.Utils import LRUCacheDict
 from ..Japanese.JapaneseG2P import japanese_to_phones
+from ..Chinese.ChineseG2P import get_phonemes_and_bert
 from ..Utils.Constants import BERT_FEATURE_DIM
 from ..Audio.Audio import load_audio
 from ..ModelManager import model_manager
+from ..Utils.Shared import context
 
 import os
 import numpy as np
@@ -53,9 +55,20 @@ class ReferenceAudio:
 
     def set_text(self, prompt_text: str) -> None:
         self.text = prompt_text
-        self.phonemes_seq = np.array([japanese_to_phones(prompt_text)], dtype=np.int64)
-        self.text_bert: Optional[np.ndarray] = np.zeros((self.phonemes_seq.shape[1], BERT_FEATURE_DIM),
-                                                        dtype=np.float32)
+        language = model_manager.character_model_languages.get(context.current_speaker, 'japanese')
+        if language == 'chinese':
+            if model_manager.roberta_model and model_manager.roberta_tokenizer:
+                self.phonemes_seq, self.text_bert = get_phonemes_and_bert(
+                    prompt_text, model_manager.roberta_tokenizer, model_manager.roberta_model
+                )
+            else:
+                # Fallback if RoBERTa is not available
+                from ..Chinese.ChineseG2P import chinese_to_phones as chinese_to_phones_fn
+                self.phonemes_seq = np.array([chinese_to_phones_fn(prompt_text)], dtype=np.int64)
+                self.text_bert = np.zeros((self.phonemes_seq.shape[1], BERT_FEATURE_DIM), dtype=np.float32)
+        else:
+            self.phonemes_seq = np.array([japanese_to_phones(prompt_text)], dtype=np.int64)
+            self.text_bert = np.zeros((self.phonemes_seq.shape[1], BERT_FEATURE_DIM), dtype=np.float32)
 
     @classmethod
     def clear_cache(cls) -> None:

@@ -1,40 +1,46 @@
 # -*- coding: utf-8 -*-
 """
-A universal G2P module that automatically handles Japanese and Chinese.
+用于纯日语的 G2P。
 """
+# import os
+# os.environ['OPEN_JTALK_DICT_DIR'] = './Data/open_jtalk_dic_utf_8-1.11'
+
 import re
 import pyopenjtalk
-import pypinyin
-from pypinyin.style._utils import get_initials, get_finals
 from typing import List
 from .SymbolsV2 import symbols_v2, symbol_to_id_v2
 
-# --- Language Detection ---
-_CHINESE_CHARACTERS_RE = re.compile(r'[\u4e00-\u9fa5]')
-
-def is_chinese(text: str) -> bool:
-    """Check if the text contains Chinese characters."""
-    return _CHINESE_CHARACTERS_RE.search(text) is not None
-
-# --- Japanese G2P Constants ---
+# 匹配连续的标点符号
 _CONSECUTIVE_PUNCTUATION_RE = re.compile(r"([,./?!~…・])\1+")
+
+# 匹配需要转换为日语读法的特殊符号
 _SYMBOLS_TO_JAPANESE = [
     (re.compile("%"), "パーセント"),
     (re.compile("％"), "パーセント"),
 ]
+
+# 匹配日语字符（汉字、假名、全角字母数字等）
 _JAPANESE_CHARACTERS_RE = re.compile(
     r"[A-Za-z\d\u3005\u3040-\u30ff\u4e00-\u9fff\uff11-\uff19\uff21-\uff3a\uff41-\uff5a\uff66-\uff9d]"
 )
+
+# 匹配非日语字符（标点、空格等）
 _JAPANESE_MARKS_RE = re.compile(
     r"[^A-Za-z\d\u3005\u3040-\u30ff\u4e00-\u9fff\uff11-\uff19\uff21-\uff3a\uff41-\uff5a\uff66-\uff9d]"
 )
 
+
 class JapaneseG2P:
     """
-    A universal G2P converter that automatically handles Japanese and Chinese.
+    一个简化的、封装好的日语Grapheme-to-Phoneme（字素到音素）转换器。
+
+    本版本假设 pyopenjtalk 库已安装，并且不使用任何用户自定义词典。
+    它专注于提供一个纯粹、高效的文本到音素转换接口。
     """
+
     @staticmethod
     def _text_normalize(text: str) -> str:
+        """对输入文本进行基础的规范化处理。"""
         for regex, replacement in _SYMBOLS_TO_JAPANESE:
             text = re.sub(regex, replacement, text)
         text = _CONSECUTIVE_PUNCTUATION_RE.sub(r"\1", text)
@@ -43,6 +49,7 @@ class JapaneseG2P:
 
     @staticmethod
     def _post_replace_phoneme(ph: str) -> str:
+        """对单个音素或标点进行后处理替换。"""
         rep_map = {
             "：": ",", "；": ",", "，": ",", "。": ".",
             "！": "!", "？": "?", "\n": ".", "·": ",",
@@ -52,11 +59,13 @@ class JapaneseG2P:
 
     @staticmethod
     def _numeric_feature_by_regex(regex: str, s: str) -> int:
+        """从OpenJTalk标签中提取数值特征。"""
         match = re.search(regex, s)
         return int(match.group(1)) if match else -50
 
     @staticmethod
     def _pyopenjtalk_g2p_prosody(text: str) -> List[str]:
+        """使用pyopenjtalk提取音素及韵律符号。"""
         labels = pyopenjtalk.make_label(pyopenjtalk.run_frontend(text))
         phones = []
         for n, lab_curr in enumerate(labels):
@@ -90,70 +99,54 @@ class JapaneseG2P:
                 phones.append("]")
             elif a2 == 1 and a2_next == 2:
                 phones.append("[")
+
         return phones
 
     @staticmethod
-    def _chinese_g2p(text: str) -> List[str]:
-        """Chinese G2P using pypinyin with correct decomposition."""
-        phonemes = []
-        pinyins = pypinyin.pinyin(text, style=pypinyin.Style.TONE3, neutral_tone_with_five=True)
-        
-        for p_list in pinyins:
-            syllable_with_tone = p_list[0]
-            
-            syllable = syllable_with_tone.rstrip('12345')
-            tone = syllable_with_tone[len(syllable):]
-
-            if not tone:
-                tone = '5'
-
-            initial = get_initials(syllable, strict=False)
-            final = get_finals(syllable, strict=False)
-
-            if initial:
-                phonemes.append(initial)
-            if final:
-                phonemes.append(f"{final}{tone}")
-        
-        return phonemes
-
-    @staticmethod
     def g2p(text: str, with_prosody: bool = True) -> List[str]:
+        """
+        将日语文本转换为音素序列。
+
+        Args:
+            text (str): 待转换的日语文本。
+            with_prosody (bool): 是否在输出中包含韵律符号。默认为 True。
+
+        Returns:
+            List[str]: 音素和符号的列表。
+        """
         if not text.strip():
             return []
 
-        if is_chinese(text):
-            return JapaneseG2P._chinese_g2p(text)
-
-        # Japanese processing
+        # 1. 文本规范化
         norm_text = JapaneseG2P._text_normalize(text)
+
+        # 2. 使用标点符号分割字符串，得到日语文本片段
         japanese_segments = _JAPANESE_MARKS_RE.split(norm_text)
         punctuation_marks = _JAPANESE_MARKS_RE.findall(norm_text)
+
         phonemes = []
         for i, segment in enumerate(japanese_segments):
             if segment:
-                if with_prosody:
+                if with_prosody:  # 移除分析结果中句首(^)/句尾($)的符号，因为我们按片段处理
                     phones = JapaneseG2P._pyopenjtalk_g2p_prosody(segment)[1:-1]
                 else:
                     phones = pyopenjtalk.g2p(segment).split(" ")
                 phonemes.extend(phones)
+
+            # 将对应的标点符号添加回来
             if i < len(punctuation_marks):
                 mark = punctuation_marks[i].strip()
                 if mark:
                     phonemes.append(mark)
+
+        # 3. 对最终列表中的每个元素进行后处理（主要转换全角标点）
         processed_phonemes = [JapaneseG2P._post_replace_phoneme(p) for p in phonemes]
+
         return processed_phonemes
+
 
 def japanese_to_phones(text: str) -> list[int]:
     phones = JapaneseG2P.g2p(text)
-    # Replace any phoneme not in the symbol list with UNK
-    valid_phones = []
-    for ph in phones:
-        if ph in symbol_to_id_v2:
-            valid_phones.append(ph)
-        else:
-            # This is a fallback for safety, ideally all phonemes should be in the list
-            valid_phones.append("UNK")
-            
-    ids = [symbol_to_id_v2[ph] for ph in valid_phones]
-    return ids
+    phones = ["UNK" if ph not in symbols_v2 else ph for ph in phones]
+    phones = [symbol_to_id_v2[ph] for ph in phones]
+    return phones

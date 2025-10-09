@@ -1,7 +1,10 @@
 onnx
 onnxruntime
+torch
+transformers
 numpy
 pyopenjtalk
+pypinyin
 soundfile
 soxr
 pyyaml

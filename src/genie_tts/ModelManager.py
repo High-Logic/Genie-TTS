@@ -116,6 +116,7 @@ class ModelManager:
         return False
 
     def get(self, character_name: str) -> Optional[GSVModel]:
+        character_name = character_name.lower()
         if character_name in self.character_to_model:
             model_map = self.character_to_model[character_name]
             return GSVModel(

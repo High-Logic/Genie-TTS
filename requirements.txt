@@ -1,13 +1,26 @@
+# Genie-TTS
+
+# 通用
 onnx
 onnxruntime
 numpy
-pyopenjtalk
 soundfile
 soxr
 pyyaml
-rich
 pyaudio
+pydantic
+rich
 huggingface_hub[hf_xet]
 fastapi
 uvicorn[standard]
-pydantic
+
+# 日文 G2P
+pyopenjtalk
+
+# 英文 G2P
+nltk
+
+# 中文 G2P
+pypinyin
+g2pM
+jieba_fast

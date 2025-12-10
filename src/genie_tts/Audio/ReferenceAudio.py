@@ -1,5 +1,5 @@
 from ..Utils.Utils import LRUCacheDict
-from ..Japanese.JapaneseG2P import japanese_to_phones
+from ..G2P.Japanese.JapaneseG2P import japanese_to_phones
 from ..Utils.Constants import BERT_FEATURE_DIM
 from ..Audio.Audio import load_audio
 from ..ModelManager import model_manager

@@ -11,7 +11,7 @@ from typing import Optional, List, Callable
 import pyaudio
 import logging
 
-from ..Japanese.Split import split_japanese_text
+from ..Utils.TextSplitter import TextSplitter
 from ..Core.Inference import tts_client
 from ..ModelManager import model_manager
 from ..Utils.Shared import context
@@ -24,6 +24,8 @@ STREAM_END = 'STREAM_END'  # 这是一个特殊的标记，表示文本流结束
 
 class TTSPlayer:
     def __init__(self, sample_rate: int = 32000):
+        self._text_splitter = TextSplitter()
+
         self.sample_rate: int = sample_rate
         self.channels: int = 1
         self.bytes_per_sample: int = 2  # 16-bit audio
@@ -213,7 +215,7 @@ class TTSPlayer:
                 self._start_time = time.time()
 
             if self._split:
-                sentences = split_japanese_text(text_chunk.strip())
+                sentences = self._text_splitter.split(text_chunk.strip())
                 for sentence in sentences:
                     self._text_queue.put(sentence)
             else:

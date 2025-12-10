@@ -4,7 +4,7 @@ from typing import List, Optional
 import threading
 
 from ..Audio.ReferenceAudio import ReferenceAudio
-from ..Japanese.JapaneseG2P import japanese_to_phones
+from ..G2P.Japanese.JapaneseG2P import japanese_to_phones
 from ..Utils.Constants import BERT_FEATURE_DIM
 
 

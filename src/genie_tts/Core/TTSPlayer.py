@@ -20,6 +20,7 @@ from ..Utils.Utils import clear_queue
 logger = logging.getLogger(__name__)
 
 STREAM_END = 'STREAM_END'  # 这是一个特殊的标记，表示文本流结束
+AUDIO_STREAM_END = 'AUDIO_STREAM_END'  # 新增：特殊的标记，表示音频流播放结束
 
 
 class TTSPlayer:
@@ -35,6 +36,7 @@ class TTSPlayer:
 
         self._stop_event: threading.Event = threading.Event()
         self._tts_done_event: threading.Event = threading.Event()
+        self._playback_done_event: threading.Event = threading.Event()  # 新增：用于标记播放完成
         self._api_lock: threading.Lock = threading.Lock()
 
         self._tts_worker: Optional[threading.Thread] = None
@@ -72,6 +74,10 @@ class TTSPlayer:
                     # 在TTS工作线程完成时，通过回调发送结束信号
                     if self._chunk_callback:
                         self._chunk_callback(None)
+
+                    # 新增：如果开启了播放，通知音频队列流已结束
+                    if self._play:
+                        self._audio_queue.put(AUDIO_STREAM_END)
 
                     self._tts_done_event.set()
                     continue
@@ -125,6 +131,11 @@ class TTSPlayer:
                     audio_chunk = self._audio_queue.get(timeout=1)
                     if audio_chunk is None:
                         break
+
+                    # 新增：检测音频流结束标记
+                    if audio_chunk is AUDIO_STREAM_END:
+                        self._playback_done_event.set()
+                        continue
 
                     if p is None:
                         try:
@@ -188,6 +199,7 @@ class TTSPlayer:
     ):
         with self._api_lock:
             self._tts_done_event.clear()
+            self._playback_done_event.clear()  # 新增：重置播放完成事件
             self._chunk_callback = chunk_callback
             self._stop_event.clear()
 
@@ -249,6 +261,15 @@ class TTSPlayer:
         if self._tts_done_event.is_set():
             return
         self._tts_done_event.wait()
+
+    def wait_for_playback_done(self):
+        # 1. 首先等待TTS生成全部完成
+        self.wait_for_tts_completion()
+
+        # 2. 如果开启了播放且没有被强制停止，则等待播放结束
+        if self._play and not self._stop_event.is_set():
+            if not self._playback_done_event.is_set():
+                self._playback_done_event.wait()
 
 
 tts_player: TTSPlayer = TTSPlayer()

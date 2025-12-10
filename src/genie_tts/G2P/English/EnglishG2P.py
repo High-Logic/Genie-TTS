@@ -293,7 +293,7 @@ def g2p(text: str) -> List[str]:
     return replace_phs(phones)
 
 
-def english_to_phones(text: str) -> list[int]:
+def english_to_phones(text: str) -> List[int]:
     phones = g2p(text)
     phones = [symbol_to_id_v2[ph] for ph in phones]
     return phones

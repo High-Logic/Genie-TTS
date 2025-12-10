@@ -149,7 +149,7 @@ class JapaneseG2P:
         return processed_phonemes
 
 
-def japanese_to_phones(text: str) -> list[int]:
+def japanese_to_phones(text: str) -> List[int]:
     phones = JapaneseG2P.g2p(text)
     phones = ["UNK" if ph not in symbols_v2 else ph for ph in phones]
     phones = [symbol_to_id_v2[ph] for ph in phones]

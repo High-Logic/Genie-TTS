@@ -7,11 +7,11 @@ from ..ModelManager import model_manager
 import os
 import numpy as np
 import soxr
-from typing import Optional
+from typing import Optional, Dict
 
 
 class ReferenceAudio:
-    _prompt_cache: dict[str, 'ReferenceAudio'] = LRUCacheDict(
+    _prompt_cache: Dict[str, 'ReferenceAudio'] = LRUCacheDict(
         capacity=int(os.getenv('Max_Cached_Reference_Audio', '10')))
 
     def __new__(cls, prompt_wav: str, prompt_text: str, language: str):

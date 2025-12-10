@@ -24,16 +24,17 @@ onnxruntime.set_default_logger_severity(3)
 
 import json
 import asyncio
-from typing import AsyncIterator, Optional, Union
+from typing import AsyncIterator, Optional, Union, Dict
 
 from .Audio.ReferenceAudio import ReferenceAudio
+from .Core.Resources import ensure_exists, Chinese_G2P_DIR, Japanese_G2P_DIR, English_G2P_DIR
 from .Core.TTSPlayer import tts_player
 from .ModelManager import model_manager
 from .Utils.Shared import context
 from .PredefinedCharacter import download_predefined_character_model
 
 # A module-level private dictionary to store reference audio configurations.
-_reference_audios: dict[str, dict] = {}
+_reference_audios: Dict[str, dict] = {}
 SUPPORTED_AUDIO_EXTS = {'.wav', '.flac', '.ogg', '.aiff', '.aif'}
 
 
@@ -50,6 +51,17 @@ def load_character(
         onnx_model_dir (str | PathLike): The directory path containing the ONNX model files.
         language (str): The language of the character model.
     """
+    language = language.capitalize()
+    if language not in ['Japanese', 'English', 'Chinese']:
+        raise ValueError('Unknown language')
+
+    if language == 'Chinese':
+        ensure_exists(Chinese_G2P_DIR, "Chinese_G2P_DIR")
+    elif language == 'English':
+        ensure_exists(English_G2P_DIR, "English_G2P_DIR")
+    elif language == 'Japanese':
+        ensure_exists(Japanese_G2P_DIR, "Japanese_G2P_DIR")
+
     model_path: str = os.fspath(onnx_model_dir)
     model_manager.load_character(
         character_name=character_name,
@@ -76,7 +88,7 @@ def set_reference_audio(
         character_name: str,
         audio_path: Union[str, PathLike],
         audio_text: str,
-        language: str,
+        language: str = None,
 ) -> None:
     """
     Sets the reference audio for a character to be used for voice cloning.
@@ -98,6 +110,16 @@ def set_reference_audio(
             f"Audio format '{ext}' is not supported. Only the following formats are supported: {SUPPORTED_AUDIO_EXTS}"
         )
         return
+
+    if language is None:
+        gsv_model = model_manager.get(character_name)
+        if gsv_model:
+            language = gsv_model.LANGUAGE
+        else:
+            raise ValueError('No language specified')
+    language = language.capitalize()
+    if language not in ['Japanese', 'English', 'Chinese']:
+        raise ValueError('Unknown language')
 
     _reference_audios[character_name] = {
         'audio_path': audio_path,
@@ -230,6 +252,13 @@ def tts(
     tts_player.wait_for_tts_completion()
 
 
+def wait_for_playback_done() -> None:
+    """
+    Wait until all TTS tasks have finished processing and playback has fully completed.
+    """
+    tts_player.wait_for_playback_done()
+
+
 def stop() -> None:
     """
     Stops the currently playing text-to-speech audio.
@@ -282,7 +311,7 @@ def load_predefined_character(character_name: str) -> None:
     """
     Download and load a predefined character model for TTS inference.
     """
-    character_lang: dict[str, str] = {'misono_mika': 'Japanese'}
+    character_lang: Dict[str, str] = {'misono_mika': 'Japanese'}
     if character_name not in character_lang:
         logger.error(f"No predefined character model found for {character_name}")
         return

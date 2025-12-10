@@ -1,6 +1,6 @@
 import os
 import re
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 import logging
 
 from pypinyin.contrib.tone_convert import to_finals_tone3, to_initials
@@ -33,7 +33,7 @@ class ChineseG2P:
         self.tone_modifier: ToneSandhi = ToneSandhi()
         self.erhua_processor: ErhuaProcessor = ErhuaProcessor()
         self.text_normalizer: TextNormalizer = TextNormalizer()
-        self.pinyin_to_symbol_map: dict[str, str] = {}
+        self.pinyin_to_symbol_map: Dict[str, str] = {}
 
         # 预编译正则
         # 1. 匹配替换表中的字符

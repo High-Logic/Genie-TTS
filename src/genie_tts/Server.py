@@ -1,6 +1,6 @@
 import asyncio
 import os
-from typing import AsyncIterator, Optional, Callable, Union
+from typing import AsyncIterator, Optional, Callable, Union, Dict
 import logging
 
 import uvicorn
@@ -15,7 +15,7 @@ from .Utils.Shared import context
 
 logger = logging.getLogger(__name__)
 
-_reference_audios: dict[str, dict] = {}
+_reference_audios: Dict[str, dict] = {}
 SUPPORTED_AUDIO_EXTS = {'.wav', '.flac', '.ogg', '.aiff', '.aif'}
 
 app = FastAPI()

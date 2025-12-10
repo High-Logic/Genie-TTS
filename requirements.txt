@@ -3,6 +3,7 @@
 # 通用
 onnx
 onnxruntime
+tokenizers
 numpy
 soundfile
 soxr

@@ -1,15 +1,5 @@
 import os
 
-# (Optional) We recommend manually specifying the Hubert path for Genie.
-# Download from Huggingface: https://huggingface.co/High-Logic/Genie
-# Note: If this line is not set, Genie will automatically download the model from Huggingface.
-os.environ['HUBERT_MODEL_PATH'] = r"C:\path\to\chinese-hubert-base.onnx"
-
-# (Optional) We recommend manually specifying the dictionary path for pyopenjtalk.
-# Download from Huggingface: https://huggingface.co/High-Logic/Genie
-# Note: If this line is not set, pyopenjtalk will automatically download the dictionary.
-os.environ['OPEN_JTALK_DICT_DIR'] = r"C:\path\to\open_jtalk_dic_utf_8-1.11"
-
 # (Optional) You can set the number of cached character models and reference audios.
 os.environ['Max_Cached_Character_Models'] = '3'
 os.environ['Max_Cached_Reference_Audio'] = '10'
@@ -21,6 +11,7 @@ import time
 genie.load_character(
     character_name='<CHARACTER_NAME>',  # Replace with your character name
     onnx_model_dir=r"<PATH_TO_CHARACTER_ONNX_MODEL_DIR>",  # Replace with the folder containing the ONNX model
+    language='<LANGUAGE_CODE>',  # Replace with language code, e.g., 'en', 'zh', 'jp'
 )
 
 genie.set_reference_audio(

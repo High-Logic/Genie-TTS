@@ -13,7 +13,7 @@
 
 # 🔮 GENIE: [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) 轻量级推理引擎
 
-**专为 GPT-SoVITS 设计的高性能、轻量级的推理引擎**
+**在 CPU 上体验近乎即时的语音合成**
 
 [简体中文](./README_zh.md) | [English](./README.md)
 
@@ -21,41 +21,40 @@
 
 ---
 
-**GENIE** 是基于开源 TTS 项目 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) 打造的轻量级推理引擎，集成了
-TTS 推理、ONNX 模型转换、API Server 等核心功能，旨在提供更极致的性能与更便捷的体验。
+**GENIE** 是一个基于开源 TTS 项目 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) 构建的轻量级推理引擎。它集成了 TTS
+推理、ONNX 模型转换、API 服务端以及其他核心功能，旨在提供极致的性能和便利性。
 
-- **✅ 支持模型版本:** GPT-SoVITS V2
-- **✅ 支持语言:** 日语 (Japanese)
+* **✅ 支持的模型版本：** GPT-SoVITS V2, V2ProPlus
+* **✅ 支持的语言：** 日语、英语、中文
+* **✅ 支持的 Python 版本：** >= 3.9
 
 ---
 
-## 🎬 项目介绍视频
+## 🎬 演示视频
 
-- **[➡️ 点击查看 Bilibili 演示视频](https://www.bilibili.com/video/BV1d2hHzJEz9)**
+- **[➡️ 观看演示视频（中文）](https://www.bilibili.com/video/BV1d2hHzJEz9)**
 
 ---
 
 ## 🚀 性能优势
 
-GENIE 对原版模型进行了高度优化，在 CPU 环境下展现了卓越的性能。
+GENIE 针对原始模型进行了优化，以实现出色的 CPU 性能。
 
-| 特性        |  🔮 GENIE  | 官方 Pytorch 模型 | 官方 onnx 模型 |
-|:----------|:----------:|:-------------:|:----------:|
-| **首包延迟**  | **1.13s**  |     1.35s     |   3.57s    |
-| **运行时大小** | **~200MB** |     ~数 GB     | 与 GENIE 类似 |
-| **模型大小**  | **~230MB** |  与 GENIE 类似   |   ~750MB   |
+| 特性         |  🔮 GENIE   | 官方 PyTorch 模型 | 官方 ONNX 模型 |
+|:-----------|:-----------:|:-------------:|:----------:|
+| **首次推理延迟** |  **1.13s**  |     1.35s     |   3.57s    |
+| **运行时大小**  | **\~200MB** |    \~数 GB     | 与 GENIE 相似 |
+| **模型大小**   | **\~230MB** |  与 GENIE 相似   |  \~750MB   |
 
-> 📝 **备注:** 由于 GPU 推理的首包延迟与 CPU 相比未拉开显著差距，我们暂时仅发布 CPU 版本，以提供最佳的开箱即用体验。
->
-> 📝 **延迟测试说明:** 所有延迟数据基于一个包含 100 个日语句子的测试集，每句约 20 个字符，取平均值计算。在 CPU i7-13620H
-> 上进行推理测试。
+> 📝 **延迟测试说明：** 所有延迟数据均基于 100 个日语句子（每句约 20 个字符）的测试集取平均值。测试环境为 CPU i7-13620H。
+
 ---
 
-## 🏁 快速开始 (QuickStart)
+## 🏁 快速开始
 
-> **⚠️ 重要提示:** 建议在 **管理员模式 (Administrator)** 下运行 GENIE，以避免潜在的严重性能下降问题。
+> **⚠️ 重要提示：** 建议在 **管理员模式** 下运行 GENIE，以避免潜在的性能下降。
 
-### 📦 安装 (Installation)
+### 📦 安装
 
 通过 pip 安装：
 
@@ -63,149 +62,150 @@ GENIE 对原版模型进行了高度优化，在 CPU 环境下展现了卓越的
 pip install genie-tts
 ```
 
-> 📝 **备注:** 当您尝试安装 pyopenjtalk 时，可能会遇到安装失败的问题。这是因为 pyopenjtalk 是一个包含 C
-> 语言扩展模块的库，而其发布者目前没有提供预编译的二进制包 (wheels)。
-> 对于 Windows
-> 用户，这意味着您必须安装 [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
-> ，并确保在安装时勾选了 “使用 C++ 的桌面开发” 工作负载。
+## 📥 预训练模型
 
-### ⚡️ 快速体验 (Quick Tryout)
+首次运行 GENIE 时，需要下载资源文件（**~391MB**）。您可以按照库的提示自动下载。
 
-手上还没有 GPT-SoVITS 模型？没关系！
+> 或者，您可以从 [HuggingFace](https://huggingface.co/High-Logic/Genie/tree/main/GenieData) 手动下载文件并将其放置在本地文件夹中。然后在导入库
+**之前** 设置 `GENIE_DATA_DIR` 环境变量：
 
-为了让您能够轻松上手，GENIE 内置了预设的说话人角色。无需任何模型文件，只需运行下面的代码，即可立即听到效果：
+```python
+import os
+
+# 设置手动下载的资源文件路径
+# 注意：请在导入 genie_tts 之前执行此操作
+os.environ["GENIE_DATA_DIR"] = r"C:\path\to\your\GenieData"
+
+import genie_tts as genie
+
+# 库现在将从指定目录加载资源
+```
+
+### ⚡️ 快速试用
+
+还没有 GPT-SoVITS 模型？没问题！
+GENIE 包含几个预定义的说话人角色，您可以立即使用 —— 例如：
+
+* **Mika (聖園ミカ)** — *蔚蓝档案 (Blue Archive)* (日语)
+* **ThirtySeven (37)** — *重返未来：1999 (Reverse: 1999)* (英语)
+* **Feibi (菲比)** — *鸣潮 (Wuthering Waves)* (中文)
+
+您可以在此处浏览所有可用角色：
+**[https://huggingface.co/High-Logic/Genie/tree/main/CharacterModels](
+https://huggingface.co/High-Logic/Genie/tree/main/CharacterModels)**
+
+使用以下示例进行尝试：
 
 ```python
 import genie_tts as genie
 import time
 
-# 首次运行时会自动从网络下载所需文件
-genie.load_predefined_character('misono_mika')
+# 首次运行时自动下载所需文件
+genie.load_predefined_character('mika')
 
 genie.tts(
-    character_name='misono_mika',
+    character_name='mika',
     text='どうしようかな……やっぱりやりたいかも……！',
     play=True,  # 直接播放生成的音频
 )
 
-time.sleep(10)  # 由于音频播放是异步的，这里添加一个延时以确保音频能够完整播放完毕。
+genie.wait_for_playback_done()  # 确保音频播放完成
 ```
 
-### 🔗 依赖项下载
+### 🎤 TTS 最佳实践
 
-对于中国大陆用户，我们强烈建议您手动下载必要的依赖项，并将模型与字典文件放置在某个本地位置。
-
-| 下载渠道         | 链接                                                                                           |
-|:-------------|:---------------------------------------------------------------------------------------------|
-| 腾讯微云         | [https://share.weiyun.com/0Jtg2dYT](https://share.weiyun.com/0Jtg2dYT)                       |
-| Hugging Face | [https://huggingface.co/High-Logic/Genie/tree/main](https://huggingface.co/High-Logic/Genie) |
-
-下载后，请通过环境变量 (os.environ) 指定文件路径。
-
-### 🎤 语音合成最佳实践
-
-下面是一个简单的 TTS 推理示例：
+一个简单的 TTS 推理示例：
 
 ```python
-import os
-
-# (可选) 设置 HuBERT 中文模型路径。若不设置，程序将尝试从 Hugging Face 自动下载。
-os.environ['HUBERT_MODEL_PATH'] = r"C:\path\to\your\chinese-hubert-base.onnx"
-
-# (可选) 设置 Open JTalk 字典文件夹路径。若不设置，程序将尝试从 Github 自动下载。
-os.environ['OPEN_JTALK_DICT_DIR'] = r"C:\path\to\your\open_jtalk_dic_utf_8-1.11"
-
 import genie_tts as genie
 
-# 步骤 1: 加载角色声音模型
+# 第一步：加载角色语音模型
 genie.load_character(
-    character_name='<CHARACTER_NAME>',  # 替换为你的角色名称
-    onnx_model_dir=r"<PATH_TO_CHARACTER_ONNX_MODEL_DIR>",  # 替换为包含 ONNX 模型的文件夹路径
+    character_name='<CHARACTER_NAME>',  # 替换为您的角色名称
+    onnx_model_dir=r"<PATH_TO_CHARACTER_ONNX_MODEL_DIR>",  # 包含 ONNX 模型的文件夹
+    language='<LANGUAGE_CODE>',  # 替换为语言代码，例如 'en', 'zh', 'jp'
 )
 
-# 步骤 2: 设置参考音频 (用于情感和语调克隆)
+# 第二步：设置参考音频（用于情感和语调克隆）
 genie.set_reference_audio(
-    character_name='<CHARACTER_NAME>',  # 确保与加载的角色名称一致
-    audio_path=r"<PATH_TO_REFERENCE_AUDIO>",  # 替换为你的参考音频文件路径
-    audio_text="<REFERENCE_AUDIO_TEXT>",  # 替换为参考音频对应的文本
+    character_name='<CHARACTER_NAME>',  # 必须与加载的角色名称匹配
+    audio_path=r"<PATH_TO_REFERENCE_AUDIO>",  # 参考音频的路径
+    audio_text="<REFERENCE_AUDIO_TEXT>",  # 对应的文本
 )
 
-# 步骤 3: 执行 TTS 推理并生成音频
+# 第三步：运行 TTS 推理并生成音频
 genie.tts(
-    character_name='<CHARACTER_NAME>',  # 确保与加载的角色名称一致
-    text="<TEXT_TO_SYNTHESIZE>",  # 替换为你想要合成的文本
-    play=True,  # 设置为 True 可直接播放生成的音频
-    save_path="<OUTPUT_AUDIO_PATH>",  # 替换为期望的音频保存路径
+    character_name='<CHARACTER_NAME>',  # 必须与加载的角色匹配
+    text="<TEXT_TO_SYNTHESIZE>",  # 要合成的文本
+    play=True,  # 直接播放音频
+    save_path="<OUTPUT_AUDIO_PATH>",  # 输出音频文件路径
 )
 
-print("🎉 音频生成完毕!")
+genie.wait_for_playback_done()  # 确保音频播放完成
+
+print("🎉 Audio generation complete!")
 ```
 
-## 🔧 模型转换 (Model Conversion)
+---
 
-如果您需要将原始的 GPT-SoVITS 模型转换为 GENIE 使用的格式，请先确保已安装 `torch`。
+## 🔧 模型转换
+
+要将原始 GPT-SoVITS 模型转换为 GENIE 格式，请确保已安装 `torch`：
 
 ```bash
 pip install torch
 ```
 
-然后，您可以使用内置的转换工具。
+使用内置的转换工具：
 
-> **提示:** 目前 `convert_to_onnx` 函数仅支持转换 V2 版本的模型。
+> **提示：** `convert_to_onnx` 目前支持 V2 和 V2ProPlus 模型。
 
 ```python
 import genie_tts as genie
 
 genie.convert_to_onnx(
-    torch_pth_path=r"<你的 .pth 模型文件路径>",  # 替换为您的 .pth 模型文件路径
-    torch_ckpt_path=r"<你的 .ckpt 检查点文件路径>",  # 替换为您的 .ckpt 检查点文件路径
-    output_dir=r"<ONNX 模型输出文件夹路径>"  # 指定 ONNX 模型保存的目录
+    torch_pth_path=r"<YOUR .PTH MODEL FILE>",  # 替换为您的 .pth 文件
+    torch_ckpt_path=r"<YOUR .CKPT CHECKPOINT FILE>",  # 替换为您的 .ckpt 文件
+    output_dir=r"<ONNX MODEL OUTPUT DIRECTORY>"  # 保存 ONNX 模型的目录
 )
 ```
 
-## 🌐 启动 FastAPI 服务器
+---
 
-GENIE 内置了一个简单的 FastAPI 服务器。
+## 🌐 启动 FastAPI 服务
+
+GENIE 包含一个轻量级的 FastAPI 服务器：
 
 ```python
-import os
-
-os.environ['HUBERT_MODEL_PATH'] = r"C:\path\to\your\chinese-hubert-base.onnx"
-os.environ['OPEN_JTALK_DICT_DIR'] = r"C:\path\to\your\open_jtalk_dic_utf_8-1.11"
-
 import genie_tts as genie
 
-# 启动服务器
+# 启动服务
 genie.start_server(
-    host="0.0.0.0",  # 监听的主机地址
-    port=8000,  # 监听的端口
+    host="0.0.0.0",  # 主机地址
+    port=8000,  # 端口
     workers=1  # 工作进程数
 )
 ```
 
-> 关于服务器的请求格式、接口详情等信息，请参考我们的 [API 服务器使用教程](./Tutorial/English/API%20Server%20Tutorial.py)。
+> 关于请求格式和 API 详情，请参阅我们的 [API 服务教程](./Tutorial/English/API%20Server%20Tutorial.py)。
 
-## ⌨️ 启动命令行客户端
 
-为了方便快速测试和交互式使用，GENIE 提供了一个简单的命令行客户端。
+---
 
-```python
-import genie_tts as genie
+## 📝 路线图
 
-# 启动命令行客户端
-genie.launch_command_line_client()
-```
+* [x] **🌐 语言扩展**
 
-## 📝 未来计划 (Roadmap)
+    * [x] 添加对 **中文** 和 **英文** 的支持。
 
-- [ ] **🌐 语言扩展**
-    - [ ] 增加对 **中文**、**英文** 的支持。
+* [x] **🚀 模型兼容性**
 
-- [ ] **🚀 模型兼容性**
-    - [ ] 增加对 `V2Proplus`、`V3`、`V4` 等更多模型版本的支持。
+    * [x] 支持 `V2Proplus`。
+    * [ ] 支持 `V3`、`V4` 等更多版本。
 
-- [ ] **📦 便捷部署**
-    - [ ] 发布 **Docker 镜像**。
-    - [ ] 提供开箱即用的 **Windows / Linux 整合包**。
+* [x] **📦 简易部署**
+
+    * [ ] 发布 **官方 Docker 镜像**。
+    * [x] 提供开箱即用的 **Windows 整合包**。
 
 ---

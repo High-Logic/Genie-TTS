@@ -47,9 +47,6 @@ GENIE optimizes the original model for outstanding CPU performance.
 | **Runtime Size**            | **\~200MB** |      \~several GB      |  Similar to GENIE   |
 | **Model Size**              | **\~230MB** |    Similar to GENIE    |       \~750MB       |
 
-> 📝 **Note:** Since GPU inference latency does not significantly improve over CPU for the first packet, we currently
-> only provide a CPU version to ensure the best out-of-the-box experience.
->
 > 📝 **Latency Test Info:** All latency data is based on a test set of 100 Japanese sentences (\~20 characters each),
 > averaged. Tested on CPU i7-13620H.
 
@@ -67,15 +64,36 @@ Install via pip:
 pip install genie-tts
 ```
 
+## 📥 Pretrained Models
+
+When running GENIE for the first time, it requires downloading resource files (**~391MB**). You can follow the library's
+prompts to download them automatically.
+
+> Alternatively, you can manually download the files
+> from [HuggingFace](https://huggingface.co/High-Logic/Genie/tree/main/GenieData)
+> and place them in a local folder. Then set the `GENIE_DATA_DIR` environment variable **before** importing the library:
+
+```python
+import os
+
+# Set the path to your manually downloaded resource files
+# Note: Do this BEFORE importing genie_tts
+os.environ["GENIE_DATA_DIR"] = r"C:\path\to\your\GenieData"
+
+import genie_tts as genie
+
+# The library will now load resources from the specified directory
+```
+
 ### ⚡️ Quick Tryout
 
 No GPT-SoVITS model yet? No problem!
 GENIE includes several predefined speaker characters you can use immediately —
 for example:
 
-* **Mika (聖園ミカ)** — from *Blue Archive* (Japanese)
-* **ThirtySeven (37)** — from *Reverse: 1999* (English)
-* **Feibi (菲比)** — from *Wuthering Waves* (Chinese)
+* **Mika (聖園ミカ)** — *Blue Archive* (Japanese)
+* **ThirtySeven (37)** — *Reverse: 1999* (English)
+* **Feibi (菲比)** — *Wuthering Waves* (Chinese)
 
 You can browse all available characters here:
 **[https://huggingface.co/High-Logic/Genie/tree/main/CharacterModels](

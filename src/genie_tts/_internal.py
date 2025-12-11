@@ -25,7 +25,7 @@ import asyncio
 from typing import AsyncIterator, Optional, Union, Dict
 
 from .Audio.ReferenceAudio import ReferenceAudio
-from .Core.Resources import ensure_exists, Chinese_G2P_DIR, Japanese_G2P_DIR, English_G2P_DIR
+from .Core.Resources import ensure_exists, Chinese_G2P_DIR, English_G2P_DIR
 from .Core.TTSPlayer import tts_player
 from .ModelManager import model_manager
 from .Utils.Shared import context
@@ -57,8 +57,6 @@ def load_character(
         ensure_exists(Chinese_G2P_DIR, "Chinese_G2P_DIR")
     elif language == 'English':
         ensure_exists(English_G2P_DIR, "English_G2P_DIR")
-    elif language == 'Japanese':
-        ensure_exists(Japanese_G2P_DIR, "Japanese_G2P_DIR")
 
     model_path: str = os.fspath(onnx_model_dir)
     model_manager.load_character(

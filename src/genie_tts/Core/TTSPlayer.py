@@ -7,7 +7,6 @@ import threading
 import numpy as np
 import wave
 from typing import Optional, List, Callable
-import pyaudio
 import logging
 
 from ..Utils.TextSplitter import TextSplitter
@@ -115,57 +114,37 @@ class TTSPlayer:
                 self._tts_done_event.set()
 
     def _playback_worker_loop(self):
-        p = None
-        stream = None
         try:
+            import sounddevice as sd
+            with sd.OutputStream(samplerate=self.sample_rate,
+                                 channels=self.channels,
+                                 dtype='float32') as stream:
+                while not self._stop_event.is_set():
+                    try:
+                        audio_chunk = self._audio_queue.get(timeout=1)
+                        if audio_chunk is None:
+                            break
+                        if audio_chunk is AUDIO_STREAM_END:
+                            self._playback_done_event.set()
+                            continue
+                        stream.write(audio_chunk.squeeze())
+                    except queue.Empty:
+                        continue
+                    except Exception as e:
+                        logger.error(f"Error during audio playback: {e}", exc_info=True)
+
+        except Exception as e:
+            logger.warning(f"Failed to initialize sounddevice: {e}. Audio playback will be skipped.")
+            # 如果音频设备初始化失败，即使不播放，也要消费队列中的结束信号，防止主线程死锁
             while not self._stop_event.is_set():
                 try:
-                    audio_chunk = self._audio_queue.get(timeout=1)
-                    if audio_chunk is None:
+                    item = self._audio_queue.get(timeout=0.5)
+                    if item is None:
                         break
-
-                    # 新增：检测音频流结束标记
-                    if audio_chunk is AUDIO_STREAM_END:
+                    if item is AUDIO_STREAM_END:
                         self._playback_done_event.set()
-                        continue
-
-                    if p is None:
-                        try:
-                            p = pyaudio.PyAudio()
-                        except Exception as e:
-                            logger.warning(f"Failed to initialize PyAudio: {e}. Audio playback will be skipped.")
-                            continue
-
-                    if stream is None:
-                        try:
-                            stream = p.open(format=p.get_format_from_width(self.bytes_per_sample),
-                                            channels=self.channels,
-                                            rate=self.sample_rate,
-                                            output=True)
-                        except Exception as e:
-                            logger.warning(f"Failed to open audio stream: {e}. Audio playback will be skipped.")
-                            continue
-
-                    if stream:
-                        audio_data = self._preprocess_for_playback(audio_chunk)
-                        stream.write(audio_data)
                 except queue.Empty:
-                    if stream is not None:
-                        stream.stop_stream()
-                        stream.close()
-                        stream = None
-                except Exception as e:
-                    logger.error(f"A critical error occurred while playing audio: {e}", exc_info=True)
-                    if stream:
-                        stream.stop_stream()
-                        stream.close()
-                        stream = None
-        finally:
-            if stream:
-                stream.stop_stream()
-                stream.close()
-            if p:
-                p.terminate()
+                    continue
 
     def _save_session_audio(self):
         try:

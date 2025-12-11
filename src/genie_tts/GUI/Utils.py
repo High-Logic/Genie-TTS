@@ -3,6 +3,7 @@ import re
 from enum import Enum
 from datetime import datetime
 import socket
+from typing import List
 
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QPushButton, QLineEdit, QFileDialog, QMessageBox, QComboBox, QTextEdit
@@ -94,7 +95,7 @@ def truncate_text(text: str, max_len: int = 30) -> str:
     return result
 
 
-def generate_output_filenames(folder: str, original_texts: list[str]) -> list[str]:
+def generate_output_filenames(folder: str, original_texts: List[str]) -> List[str]:
     """
     批量生成文件名：
     输入 original_texts 列表

@@ -130,8 +130,9 @@ def test_tts_all():
 
 if __name__ == '__main__':
     try:
+        test_tts(V2ProPlus, lang='Japanese')
         # test_convert(V2ProPlus, lang='Japanese')
-        test_convert(V2, lang='Japanese')
+        # test_convert(V2, lang='Japanese')
     finally:
         print('删除临时文件夹')
         if os.path.isdir(TEST_CACHE_DIR):

@@ -2,13 +2,6 @@
 """
 用于纯日语的 G2P。
 """
-import os
-from ...Core.Resources import Japanese_G2P_DIR
-
-OPEN_JTALK_DICT_DIR = os.path.join(Japanese_G2P_DIR, 'open_jtalk_dic_utf_8-1.11')
-if os.path.isdir(OPEN_JTALK_DICT_DIR):
-    os.environ['OPEN_JTALK_DICT_DIR'] = OPEN_JTALK_DICT_DIR
-
 import re
 import pyopenjtalk
 from typing import List

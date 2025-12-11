@@ -19,10 +19,12 @@ GENIE_DATA_DIR: str = os.getenv(
     "./GenieData"
 )
 
+"""
 Japanese_G2P_DIR: str = os.getenv(
     "Japanese_G2P_DIR",
     f"{GENIE_DATA_DIR}/G2P/JapaneseG2P"
 )
+"""
 
 English_G2P_DIR: str = os.getenv(
     "English_G2P_DIR",

@@ -1,9 +1,10 @@
 import numpy as np
+from typing import Tuple
 from .Utils.Constants import BERT_FEATURE_DIM
 from .ModelManager import model_manager
 
 
-def get_phones_and_bert(prompt_text: str, language: str = 'japanese') -> tuple[np.ndarray, np.ndarray]:
+def get_phones_and_bert(prompt_text: str, language: str = 'japanese') -> Tuple[np.ndarray, np.ndarray]:
     if language.lower() == 'english':
         from .G2P.English.EnglishG2P import english_to_phones
         phones = english_to_phones(prompt_text)

@@ -15,7 +15,7 @@ fastapi
 uvicorn[standard]
 
 # 日文 G2P
-pyopenjtalk
+pyopenjtalk-plus
 
 # 英文 G2P
 nltk

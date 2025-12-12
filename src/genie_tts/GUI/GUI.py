@@ -23,7 +23,7 @@ from .Utils import (
 )
 from .AudioPlayer import AudioPlayer
 from .PresetManager import PresetManager
-from .ServerManager import ServerManager, InferenceWorker
+from .ServerManager import InferenceWorker
 from .ConverterWidget import ConverterWidget
 
 """
@@ -309,7 +309,6 @@ class TTSWidget(QWidget):
             QPushButton:disabled { background-color: #cccccc; }
         """)
         self.btn_start.clicked.connect(self._start_inference)
-        self.btn_start.setEnabled(False)
         layout_input.addWidget(self.text_input)
         layout_input.addWidget(self.btn_start)
         group_input.setLayout(layout_input)
@@ -640,24 +639,11 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(self.tabs)
 
-        # 初始化后台Server管理
-        self.server_manager: ServerManager = ServerManager()
-        self.server_manager.server_ready.connect(self._on_server_ready)
-        self.server_manager.start()
-
-        print("[INIT] GUI 初始化完成，等待 Server 就绪...")
-
-    def _on_server_ready(self) -> None:
-        print("[INIT] Server 就绪，可以开始推理。\n")
-        self.tts_widget.btn_start.setEnabled(True)
-
     def closeEvent(self, event: QCloseEvent) -> None:
         if os.path.exists(CACHE_DIR):
             shutil.rmtree(CACHE_DIR)
         if hasattr(self, 'player'):
             self.player.stop()
-        if hasattr(self, 'server_manager'):
-            self.server_manager.stop()
         # 线程安全退出后，再恢复 stdout
         sys.stdout = sys.__stdout__
         if hasattr(self, 'tts_widget'):

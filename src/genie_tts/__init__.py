@@ -1,4 +1,4 @@
-from ._internal import (
+from .Internal import (
     load_character,
     unload_character,
     set_reference_audio,

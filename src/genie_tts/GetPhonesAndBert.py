@@ -74,6 +74,10 @@ def _get_phones_and_bert_pure_lang(prompt_text: str, language: str = 'japanese')
             text_bert = outputs[0].astype(np.float32)
         else:
             text_bert = np.zeros((len(phones), BERT_FEATURE_DIM), dtype=np.float32)
+    elif language.lower() == 'korean':
+        from .G2P.Korean.KoreanG2P import korean_to_phones
+        phones = korean_to_phones(prompt_text)
+        text_bert = np.zeros((len(phones), BERT_FEATURE_DIM), dtype=np.float32)
     else:
         from .G2P.Japanese.JapaneseG2P import japanese_to_phones
         phones = japanese_to_phones(prompt_text)

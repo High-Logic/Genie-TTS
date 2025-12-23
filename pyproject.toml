@@ -38,17 +38,18 @@ dependencies = [
     "huggingface_hub[hf_xet]", # HF Hub 支持 + xet
     "fastapi", # Web API 框架
     "uvicorn[standard]", # ASGI 服务器
-
     # 日文 G2P
     "pyopenjtalk-plus", # 日语 G2P
-
     # 英文 G2P
     "nltk", # 英语 NLP 工具
-
     # 中文 G2P
     "pypinyin", # 中文拼音
     "g2pM", # 中文 G2P 模型
     "jieba_fast", # 中文分词
+    "jamo",
+    "ko_pron",
+    "g2pk2",
+    "eunjeon"
 ]
 
 

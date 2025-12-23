@@ -24,3 +24,9 @@ nltk
 pypinyin
 g2pM
 jieba_fast
+
+# 韩语 G2P
+jamo
+ko_pron
+g2pk2
+eunjeon

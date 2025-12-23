@@ -107,7 +107,7 @@ def load_character(
     check_onnx_model_dir(onnx_model_dir)
 
     language = normalize_language(language)
-    if language not in ['Japanese', 'English', 'Chinese', 'Hybrid-Chinese-English']:
+    if language not in ['Japanese', 'English', 'Chinese', 'Hybrid-Chinese-English', 'Korean']:
         raise ValueError('Unknown language')
 
     if language == 'Chinese':
@@ -174,7 +174,7 @@ def set_reference_audio(
         else:
             raise ValueError('No language specified')
     language = normalize_language(language)
-    if language not in ['Japanese', 'English', 'Chinese']:
+    if language not in ['Japanese', 'English', 'Chinese', 'Hybrid-Chinese-English', 'Korean']:
         raise ValueError('Unknown language')
 
     _reference_audios[character_name] = {

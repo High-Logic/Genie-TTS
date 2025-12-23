@@ -24,6 +24,13 @@ language_map = {
     "hybrid": "Hybrid-Chinese-English",
     "hybrid-zh-en": "Hybrid-Chinese-English",
     "hybrid-en-zh": "Hybrid-Chinese-English",
+
+    # Korean
+    "korean": "Korean",
+    "ko": "Korean",
+    "kr": "Korean",
+    "hangul": "Korean",
+    
 }
 
 

@@ -107,15 +107,12 @@ def load_character(
     check_onnx_model_dir(onnx_model_dir)
 
     language = normalize_language(language)
-    if language not in ['Japanese', 'English', 'Chinese', 'Hybrid-Chinese-English', 'Korean']:
-        raise ValueError('Unknown language')
+    if language not in ['Japanese', 'English', 'Chinese', 'Hybrid-Chinese-English', 'Korean', 'auto']:
+        raise ValueError(f'Unsupported language for load_character: {language!r}')
 
-    if language == 'Chinese':
+    if language in ('Chinese', 'Hybrid-Chinese-English', 'auto'):
         ensure_exists(Chinese_G2P_DIR, "Chinese_G2P_DIR")
-    elif language == 'English':
-        ensure_exists(English_G2P_DIR, "English_G2P_DIR")
-    elif language == 'Hybrid-Chinese-English':
-        ensure_exists(Chinese_G2P_DIR, "Chinese_G2P_DIR")
+    if language in ('English', 'Hybrid-Chinese-English', 'auto'):
         ensure_exists(English_G2P_DIR, "English_G2P_DIR")
 
     model_path: str = os.fspath(onnx_model_dir)
@@ -174,8 +171,8 @@ def set_reference_audio(
         else:
             raise ValueError('No language specified')
     language = normalize_language(language)
-    if language not in ['Japanese', 'English', 'Chinese', 'Hybrid-Chinese-English', 'Korean']:
-        raise ValueError('Unknown language')
+    if language not in ['Japanese', 'English', 'Chinese', 'Hybrid-Chinese-English', 'Korean', 'auto']:
+        raise ValueError(f'Unsupported language for set_reference_audio: {language!r}')
 
     _reference_audios[character_name] = {
         'audio_path': audio_path,

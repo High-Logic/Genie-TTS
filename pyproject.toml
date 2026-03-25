@@ -56,12 +56,6 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/High-Logic/Genie"
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-
 [tool.setuptools.packages.find]
 where = ["src"]
 

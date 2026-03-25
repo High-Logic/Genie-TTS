@@ -1,4 +1,5 @@
 import os
+import sys
 from huggingface_hub import snapshot_download
 
 
@@ -66,11 +67,16 @@ ROBERTA_MODEL_DIR: str = os.getenv(
 
 if not os.path.exists(GENIE_DATA_DIR):
     print("⚠️ GenieData folder not found.")
-    choice = input("Would you like to download it automatically from HuggingFace? (y/N): ").strip().lower()
-    if choice == "y":
-        download_genie_data()
+    if sys.stdin.isatty():
+        choice = input("Would you like to download it automatically from HuggingFace? (y/N): ").strip().lower()
+        if choice == "y":
+            download_genie_data()
+    else:
+        print("Non-interactive mode: skipping download prompt. "
+              "Set GENIE_DATA_DIR env var or run interactively to configure.")
 
-# ---- Run directory checks ----
-ensure_exists(HUBERT_MODEL_DIR, "HUBERT_MODEL_DIR")
-ensure_exists(SV_MODEL, "SV_MODEL")
+# ---- Run directory checks (skipped when GENIE_SKIP_RESOURCE_CHECK is set) ----
+if not os.getenv("GENIE_SKIP_RESOURCE_CHECK"):
+    ensure_exists(HUBERT_MODEL_DIR, "HUBERT_MODEL_DIR")
+    ensure_exists(SV_MODEL, "SV_MODEL")
 # ensure_exists(ROBERTA_MODEL_DIR, "ROBERTA_MODEL_DIR")

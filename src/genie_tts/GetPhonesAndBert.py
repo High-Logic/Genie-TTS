@@ -1,64 +1,108 @@
-import numpy as np
+"""Phone sequence and BERT feature extraction with multi-language dispatch.
+
+Supported language values (after normalize_language()):
+  'Japanese', 'English', 'Chinese', 'Korean',
+  'Hybrid-Chinese-English', 'auto'
+"""
+from __future__ import annotations
+
 import re
-from typing import Tuple, Literal
+import logging
+import numpy as np
+from typing import Tuple
+
 from .Utils.Constants import BERT_FEATURE_DIM
 from .ModelManager import model_manager
 
-def split_language(text: str) -> list[dict[Literal['language', 'content'], str]]:
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Legacy Hybrid-Chinese-English splitter (preserved for backward compatibility)
+# ---------------------------------------------------------------------------
+
+def _split_chinese_english(text: str) -> list[dict]:
+    """Split text into Chinese and English chunks via Latin-character regex.
+
+    Kept for backward compatibility with 'Hybrid-Chinese-English' mode.
+    For general mixed-language splitting, use Utils.LangDetector.segment_by_language.
     """
-    从文本中提取中文和英文部分，返回一个包含语言和内容的列表。
-
-    ### 参数:
-    text (str): 输入的文本，包含中文和英文混合。
-
-    ### 返回:
-    list[dict[Literal['language', 'content'], str]]: 一个列表，每个元素是一个字典，包含语言（'chinese'或'english'）和对应的内容。
-    """
-
     pattern_eng = re.compile(r"[a-zA-Z]+")
-    split = re.split(pattern_eng, text)
+    parts = re.split(pattern_eng, text)
     matches = pattern_eng.findall(text)
 
-    assert len(matches) == len(split) - 1, "Mismatch between number of English matches and Chinese parts"
-
-    result = []
-    for i, part in enumerate(split):
+    result: list[dict] = []
+    for i, part in enumerate(parts):
         if part.strip():
-            result.append({'language': 'chinese', 'content': part})
+            result.append({"language": "chinese", "content": part})
         if i < len(matches):
-            result.append({'language': 'english', 'content': matches[i]})
-
+            result.append({"language": "english", "content": matches[i]})
     return result
 
-def get_phones_and_bert(prompt_text: str, language: str = 'japanese') -> Tuple[np.ndarray, np.ndarray]:
-    """获取 phones 序列和 bert 特征, 考虑混合语言问题"""
 
-    if language.lower() == 'hybrid-chinese-english':
-        split = split_language(prompt_text)
+# ---------------------------------------------------------------------------
+# Public entry point
+# ---------------------------------------------------------------------------
 
-        list_phones = []
-        list_berts = []
+def get_phones_and_bert(
+    prompt_text: str, language: str = "japanese"
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Return (phones_seq, text_bert) for *prompt_text* in *language*.
 
-        for chunk in split:
-            phones_seq, text_bert = _get_phones_and_bert_pure_lang(chunk['content'], chunk['language'])
-            list_phones.append(phones_seq)
-            list_berts.append(text_bert)
+    *language* should already be normalised by normalize_language().
+    Handles multi-language modes ('Hybrid-Chinese-English', 'auto') by
+    splitting text into per-language chunks and concatenating results.
+    """
+    lang_lower = language.lower()
 
-        phones_seq = np.concatenate(list_phones, axis=1)
-        text_bert = np.concatenate(list_berts, axis=0)
-    else:
-        phones_seq, text_bert = _get_phones_and_bert_pure_lang(prompt_text, language)
+    if lang_lower == "hybrid-chinese-english":
+        chunks = _split_chinese_english(prompt_text)
+        return _process_chunks(chunks)
 
+    if lang_lower == "auto":
+        from .Utils.LangDetector import segment_by_language
+        chunks = segment_by_language(prompt_text)
+        if not chunks:
+            logger.warning("LangDetector returned no segments for text %r; falling back to Japanese.", prompt_text[:60])
+            return _get_phones_and_bert_single(prompt_text, "japanese")
+        if len(chunks) == 1:
+            return _get_phones_and_bert_single(chunks[0]["content"], chunks[0]["language"])
+        return _process_chunks(chunks)
+
+    return _get_phones_and_bert_single(prompt_text, language)
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+def _process_chunks(chunks: list[dict]) -> Tuple[np.ndarray, np.ndarray]:
+    """Run G2P on each chunk and concatenate results."""
+    list_phones: list[np.ndarray] = []
+    list_berts: list[np.ndarray] = []
+    for chunk in chunks:
+        phones_seq, text_bert = _get_phones_and_bert_single(
+            chunk["content"], chunk["language"]
+        )
+        list_phones.append(phones_seq)
+        list_berts.append(text_bert)
+    phones_seq = np.concatenate(list_phones, axis=1)
+    text_bert = np.concatenate(list_berts, axis=0)
     return phones_seq, text_bert
 
-def _get_phones_and_bert_pure_lang(prompt_text: str, language: str = 'japanese') -> Tuple[np.ndarray, np.ndarray]:
-    """获取 phones 序列和 bert 特征，不考虑混合语言问题"""
 
-    if language.lower() == 'english':
+def _get_phones_and_bert_single(
+    prompt_text: str, language: str = "japanese"
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Run G2P for a single-language text chunk."""
+    lang_lower = language.lower()
+
+    if lang_lower == "english":
         from .G2P.English.EnglishG2P import english_to_phones
         phones = english_to_phones(prompt_text)
         text_bert = np.zeros((len(phones), BERT_FEATURE_DIM), dtype=np.float32)
-    elif language.lower() == 'chinese':
+
+    elif lang_lower == "chinese":
         from .G2P.Chinese.ChineseG2P import chinese_to_phones
         text_clean, _, phones, word2ph = chinese_to_phones(prompt_text)
         if model_manager.load_roberta_model():
@@ -66,19 +110,27 @@ def _get_phones_and_bert_pure_lang(prompt_text: str, language: str = 'japanese')
             input_ids = np.array([encoded.ids], dtype=np.int64)
             attention_mask = np.array([encoded.attention_mask], dtype=np.int64)
             ort_inputs = {
-                'input_ids': input_ids,
-                'attention_mask': attention_mask,
-                'repeats': np.array(word2ph, dtype=np.int64),
+                "input_ids": input_ids,
+                "attention_mask": attention_mask,
+                "repeats": np.array(word2ph, dtype=np.int64),
             }
             outputs = model_manager.roberta_model.run(None, ort_inputs)
             text_bert = outputs[0].astype(np.float32)
         else:
             text_bert = np.zeros((len(phones), BERT_FEATURE_DIM), dtype=np.float32)
-    elif language.lower() == 'korean':
+
+    elif lang_lower == "korean":
         from .G2P.Korean.KoreanG2P import korean_to_phones
         phones = korean_to_phones(prompt_text)
         text_bert = np.zeros((len(phones), BERT_FEATURE_DIM), dtype=np.float32)
+
     else:
+        if lang_lower not in ("japanese",):
+            logger.warning(
+                "Unsupported language %r in _get_phones_and_bert_single; "
+                "falling back to Japanese G2P.",
+                language,
+            )
         from .G2P.Japanese.JapaneseG2P import japanese_to_phones
         phones = japanese_to_phones(prompt_text)
         text_bert = np.zeros((len(phones), BERT_FEATURE_DIM), dtype=np.float32)

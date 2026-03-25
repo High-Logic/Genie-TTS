@@ -36,8 +36,15 @@ class TextSplitter:
 
     @staticmethod
     def get_char_width(char: str) -> int:
-        """计算单字符宽度：ASCII算1，其他（中日韩）算2"""
-        return 1 if ord(char) < 128 else 2
+        """计算单字符宽度：ASCII算1，CJK/韩文/假名算2，韩文兼容字母(jamo兼容区)算1"""
+        cp = ord(char)
+        if cp < 128:
+            return 1
+        # Korean compatibility jamo (U+3130-U+318F) — individual jamo letters, count as 1
+        if 0x3130 <= cp <= 0x318F:
+            return 1
+        # All other non-ASCII (CJK, Hangul syllables, Hiragana, Katakana, etc.) count as 2
+        return 2
 
     def get_effective_len(self, text: str) -> int:
         """

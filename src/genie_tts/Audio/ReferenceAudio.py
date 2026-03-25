@@ -17,7 +17,8 @@ class ReferenceAudio:
     def __new__(cls, prompt_wav: str, prompt_text: str, language: str):
         if prompt_wav in cls._prompt_cache:
             instance = cls._prompt_cache[prompt_wav]
-            if instance.text != prompt_text:  # 如果文本与缓存内记录的不同，则更新。
+            # Re-run G2P if text OR language changed since the entry was cached.
+            if instance.text != prompt_text or getattr(instance, 'language', None) != language:
                 instance.set_text(prompt_text, language=language)
             return instance
 
@@ -58,6 +59,7 @@ class ReferenceAudio:
 
     def set_text(self, prompt_text: str, language: str) -> None:
         self.text = prompt_text
+        self.language = language
         self.phonemes_seq, self.text_bert = get_phones_and_bert(prompt_text, language=language)
 
     @classmethod

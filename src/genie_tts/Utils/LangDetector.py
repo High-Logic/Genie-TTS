@@ -24,7 +24,20 @@ _FASTLANG_MAP: dict[str, str] = {
 }
 
 _FALLBACK_LANG = "English"
-_MIN_SEGMENT_LEN = 2  # minimum chars to keep a segment separate
+_DEFAULT_MIN_SEGMENT_LEN = 2  # default minimum chars to keep a segment separate
+
+# Punctuation-only pattern: CJK punctuation + ASCII punctuation + whitespace.
+# Chunks matching this are attached to the preceding segment rather than
+# being sent to detect_language() (which cannot infer language from punctuation).
+_RE_PUNCT_ONLY = re.compile(
+    r"^["
+    r"\s"                          # whitespace
+    r"\u3000-\u303f"               # CJK symbols & punctuation (。「」、・…)
+    r"\uff00-\uffef"               # Fullwidth & halfwidth forms
+    r"\u2000-\u206f"               # General punctuation
+    r"!-/:-@\[-`{-~"              # ASCII punctuation (printable non-alnum)
+    r"]+$"
+)
 
 
 class LangSegment(TypedDict):
@@ -68,14 +81,10 @@ def detect_language(text: str) -> str:
     try:
         result = _detect_fn(text)
         # fast_langdetect returns a list of dicts: [{'lang': 'zh', 'score': 0.99}, ...]
-        # Take the top result (highest score is first)
-        if isinstance(result, list) and result:
-            code = result[0].get("lang", "").lower()
-        elif isinstance(result, dict):
-            code = result.get("lang", "").lower()
+        if isinstance(result, list):
+            code = result[0].get("lang", "").lower() if result else ""
         else:
-            code = str(result).lower()
-
+            code = result.get("lang", "").lower()
         canonical = _FASTLANG_MAP.get(code)
         if canonical is None:
             logger.warning(
@@ -93,44 +102,54 @@ def detect_language(text: str) -> str:
         return _FALLBACK_LANG
 
 
-# Regex patterns for script-based pre-segmentation
-_RE_CJK = re.compile(
-    r"[\u3040-\u30ff"
-    r"\u3400-\u4dbf"
-    r"\u4e00-\u9fff"
-    r"\uf900-\ufaff"
-    r"\ufe30-\ufe4f"
-    r"\uac00-\ud7a3"
-    r"\u3130-\u318f]+"
+# Regex: split on CJK script boundaries, keeping the CJK runs as capture groups.
+_RE_CJK_SPLIT = re.compile(
+    r"([\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff"
+    r"\uf900-\ufaff\ufe30-\ufe4f\uac00-\ud7a3"
+    r"\u3130-\u318f]+)"
 )
-_RE_LATIN = re.compile(r"[a-zA-Z][a-zA-Z\s'\-]*")
 
 
-def segment_by_language(text: str) -> list[LangSegment]:
+def segment_by_language(text: str, min_len: int = _DEFAULT_MIN_SEGMENT_LEN) -> list[LangSegment]:
     """Split *text* into segments, each labelled with a detected language.
 
     Strategy:
-    1. Pre-split on script boundaries (CJK vs Latin vs other).
-    2. Detect language for each chunk using fast_langdetect.
-    3. Merge adjacent same-language chunks.
-    4. Drop empty segments; attach orphaned punctuation to preceding segment.
+    1. Pre-split on CJK/non-CJK script boundaries.
+    2. Punctuation-only chunks are attached to the preceding segment (not detected).
+    3. Chunks shorter than *min_len* are attached to the preceding segment.
+    4. Detect language for each remaining chunk using fast_langdetect.
+    5. Merge adjacent same-language chunks.
+    6. Drop empty segments.
 
-    Returns a list of LangSegment dicts: {language: str, content: str}.
+    Args:
+        text: Input text to segment.
+        min_len: Minimum stripped length of a chunk before it gets its own language
+            label. Chunks shorter than this are merged with the previous segment.
+            Default is 2. Use 1 to keep single-character CJK words separate.
+
+    Returns:
+        A list of LangSegment dicts: {language: str, content: str}.
     """
     if not text or not text.strip():
         return []
 
     # Split into alternating CJK / non-CJK runs, keeping delimiters
-    parts = re.split(r"([\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff"
-                     r"\uf900-\ufaff\ufe30-\ufe4f\uac00-\ud7a3"
-                     r"\u3130-\u318f]+)", text)
+    parts = _RE_CJK_SPLIT.split(text)
 
     raw: list[LangSegment] = []
     for part in parts:
-        part = part  # keep original spacing
         if not part:
             continue
-        if len(part.strip()) < _MIN_SEGMENT_LEN:
+        stripped = part.strip()
+        # Attach punctuation-only chunks to the previous segment
+        if _RE_PUNCT_ONLY.match(part):
+            if raw:
+                raw[-1]["content"] += part
+            else:
+                # Leading punctuation: defer — will be prepended when next segment appears
+                raw.append({"language": _FALLBACK_LANG, "content": part})
+            continue
+        if len(stripped) < min_len:
             # Too short to detect reliably — attach to previous if possible
             if raw:
                 raw[-1]["content"] += part

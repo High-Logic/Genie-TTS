@@ -1,7 +1,7 @@
 # Spec: Multilingual Support Improvement
 
 **Spec ID:** 001
-**Status:** In Progress
+**Status:** Done
 **Branch:** 001-spec-kit-multilang
 **Created:** 2026-03-25
 

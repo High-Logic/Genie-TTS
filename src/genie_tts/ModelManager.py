@@ -56,6 +56,7 @@ class GSVModel:
     PROMPT_ENCODER_PATH: Optional[str] = None
 
 
+# Deduplicate candidate directories while preserving search order.
 def _unique_paths(paths: List[str]) -> List[str]:
     result: List[str] = []
     seen: set[str] = set()
@@ -68,6 +69,9 @@ def _unique_paths(paths: List[str]) -> List[str]:
     return result
 
 
+# The original implementation assumed a fixed local RoBERTa layout
+# (RoBERTa.onnx + roberta_tokenizer/tokenizer.json). For upstream compatibility
+# we keep that layout first, then also search Hugging Face ONNX-style folders.
 def candidate_roberta_dirs(base_dir: str = ROBERTA_MODEL_DIR) -> List[str]:
     dirs = [base_dir]
     genie_data_dir = os.path.dirname(os.path.normpath(base_dir))
@@ -78,6 +82,9 @@ def candidate_roberta_dirs(base_dir: str = ROBERTA_MODEL_DIR) -> List[str]:
     return _unique_paths(dirs)
 
 
+# Resolve both the model file and tokenizer path, because newer ONNX exports
+# may ship as model.onnx / model_fp16.onnx + tokenizer.json instead of the
+# original hard-coded RoBERTa.onnx + roberta_tokenizer layout.
 def resolve_roberta_assets(base_dir: str = ROBERTA_MODEL_DIR) -> Tuple[Optional[str], Optional[str]]:
     model_names = ("RoBERTa.onnx", "model.onnx", "model_fp16.onnx")
     tokenizer_rel_paths = (
@@ -186,6 +193,8 @@ class ModelManager:
         self.roberta_tokenizer: Optional[Tokenizer] = None
 
     def load_roberta_model(self) -> bool:
+        # Replace the original fixed-path loading logic with asset resolution so
+        # both the historical local layout and Hugging Face ONNX layouts work.
         if self.roberta_model is not None and self.roberta_tokenizer is not None:
             return True
 

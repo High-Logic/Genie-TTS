@@ -5,6 +5,9 @@ from .Utils.Constants import BERT_FEATURE_DIM
 from .ModelManager import model_manager
 
 
+# Different RoBERTa ONNX exports expose slightly different input names
+# (e.g. some require token_type_ids, some accept repeats). Build the input map
+# dynamically instead of assuming one exact export signature.
 def _build_roberta_inputs(encoded, word2ph: list[int]) -> dict[str, np.ndarray]:
     input_ids = np.array([encoded.ids], dtype=np.int64)
     attention_mask = np.array([encoded.attention_mask], dtype=np.int64)
@@ -22,6 +25,9 @@ def _build_roberta_inputs(encoded, word2ph: list[int]) -> dict[str, np.ndarray]:
     return ort_inputs
 
 
+# Different RoBERTa ONNX exports may return either phone-level features
+# directly or token-level features that still need to be expanded by word2ph.
+# We normalize those layouts here so the downstream Chinese path stays stable.
 def _expand_roberta_output(text_bert: np.ndarray, word2ph: list[int], num_phones: int) -> np.ndarray:
     if text_bert.ndim == 3 and text_bert.shape[0] == 1:
         text_bert = text_bert[0]
@@ -109,6 +115,9 @@ def _get_phones_and_bert_pure_lang(prompt_text: str, language: str = 'japanese')
         from .G2P.Chinese.ChineseG2P import chinese_to_phones
         text_clean, _, phones, word2ph = chinese_to_phones(prompt_text)
         if model_manager.load_roberta_model():
+            # The original path assumed a single RoBERTa input/output layout.
+            # We normalize both ONNX inputs and outputs here so Chinese prosody
+            # repair works across multiple exported RoBERTa variants.
             encoded = model_manager.roberta_tokenizer.encode(text_clean)
             ort_inputs = _build_roberta_inputs(encoded, word2ph)
             outputs = model_manager.roberta_model.run(None, ort_inputs)

@@ -1,5 +1,4 @@
 import os
-import sys
 from huggingface_hub import snapshot_download
 
 
@@ -17,6 +16,7 @@ def _resolve_roberta_download(model_variant: str) -> tuple[str, list[str]]:
 
 
 def download_roberta_data(model_variant: str = "fp32") -> str:
+    """Download the optional Chinese RoBERTa assets used for Chinese prosody only."""
     model_file, allow_patterns = _resolve_roberta_download(model_variant)
     target_dir = os.path.join(GENIE_DATA_DIR, ROBERTA_DIRNAME)
 
@@ -36,18 +36,22 @@ def download_roberta_data(model_variant: str = "fp32") -> str:
     return target_dir
 
 
-def download_genie_data(include_roberta: bool = False, roberta_model_variant: str = "fp32") -> None:
-    print("Starting download Genie-TTS resources. This may take a few moments.")
+def download_genie_data() -> None:
+    # Keep the original GenieData download behavior unchanged, and append the
+    # optional Chinese RoBERTa assets afterwards so existing users still get the
+    # same entry point / prompt flow.
+    print(f"🚀 Starting download Genie-TTS resources… This may take a few moments. ⏳")
     snapshot_download(
         repo_id=GENIE_DATA_REPO_ID,
         repo_type="model",
         allow_patterns="GenieData/*",
         local_dir=".",
-        local_dir_use_symlinks=True,
+        local_dir_use_symlinks=True,  # 软链接
     )
-    print("Genie-TTS resources downloaded successfully.")
-    if include_roberta:
-        download_roberta_data(model_variant=roberta_model_variant)
+    # Chinese RoBERTa is added here so users who choose the built-in resource
+    # download path also receive the assets needed for Chinese prosody repair.
+    download_roberta_data()
+    print("✅ Genie-TTS resources downloaded successfully.")
 
 
 def ensure_exists(path: str, name: str):
@@ -101,18 +105,14 @@ ROBERTA_MODEL_DIR: str = os.getenv(
 )
 
 if not os.path.exists(GENIE_DATA_DIR):
-    print("GenieData folder not found.")
-    if sys.stdin.isatty():
-        choice = input("Would you like to download it automatically from HuggingFace? (y/N): ").strip().lower()
-        if choice == "y":
-            download_genie_data()
-    else:
-        print(
-            "Non-interactive mode: skipping download prompt. "
-            "Set GENIE_DATA_DIR env var or run interactively to configure."
-        )
+    print("⚠️ GenieData folder not found.")
+    choice = input("Would you like to download it automatically from HuggingFace? (y/N): ").strip().lower()
+    if choice == "y":
+        download_genie_data()
 
-# ---- Run directory checks (skipped when GENIE_SKIP_RESOURCE_CHECK is set) ----
-if not os.getenv("GENIE_SKIP_RESOURCE_CHECK"):
-    ensure_exists(HUBERT_MODEL_DIR, "HUBERT_MODEL_DIR")
-    ensure_exists(SV_MODEL, "SV_MODEL")
+# ---- Run directory checks ----
+ensure_exists(HUBERT_MODEL_DIR, "HUBERT_MODEL_DIR")
+ensure_exists(SV_MODEL, "SV_MODEL")
+# NOTE: We intentionally do not require RoBERTa assets here, because they are
+# only meant for the Chinese prosody path and should remain optional.
+# ensure_exists(ROBERTA_MODEL_DIR, "ROBERTA_MODEL_DIR")

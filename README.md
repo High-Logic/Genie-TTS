@@ -83,9 +83,10 @@ os.environ["GENIE_DATA_DIR"] = r"C:\path\to\your\GenieData"
 import genie_tts as genie
 
 # The library will now load resources from the specified directory
+```
 
-
-If you want the optional Chinese RoBERTa text features used by Chinese prosody enhancement, you can also download them with:
+If you want the optional Chinese RoBERTa text features used only for **Chinese inference**
+to improve Chinese prosody, you can also download them with:
 
 ```python
 import genie_tts as genie
@@ -94,7 +95,9 @@ genie.download_roberta_data()
 # or:
 genie.download_genie_data(include_roberta=True)
 ```
-```
+
+These RoBERTa features are only used in the **Chinese** path. Non-Chinese inference
+(Japanese / English / Korean) does not use them.
 
 ### ⚡️ Quick Tryout
 

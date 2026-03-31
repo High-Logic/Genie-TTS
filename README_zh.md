@@ -91,7 +91,8 @@ genie.download_roberta_data()
 genie.download_genie_data(include_roberta=True)
 ```
 
-这些 RoBERTa 特征只会用于**中文**路径；日语 / 英语 / 韩语推理不会使用它们。
+这些 RoBERTa 特征仅用于**中文**路径，以改善中文韵律；
+它们**不应该用于**日语 / 英语 / 韩语推理。
 
 ### ⚡️ 快速试用
 

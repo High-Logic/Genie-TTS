@@ -96,8 +96,8 @@ genie.download_roberta_data()
 genie.download_genie_data(include_roberta=True)
 ```
 
-These RoBERTa features are only used in the **Chinese** path. Non-Chinese inference
-(Japanese / English / Korean) does not use them.
+These RoBERTa features are intended only for the **Chinese** path to improve Chinese prosody.
+They **should not be used** for non-Chinese inference (Japanese / English / Korean).
 
 ### ⚡️ Quick Tryout
 

@@ -11,7 +11,7 @@ from .Internal import (
     wait_for_playback_done,
 )
 from .Server import start_server
-from .Core.Resources import download_genie_data
+from .Core.Resources import download_genie_data, download_roberta_data
 
 __all__ = [
     "load_character",
@@ -26,4 +26,5 @@ __all__ = [
     "load_predefined_character",
     "wait_for_playback_done",
     'download_genie_data',
+    'download_roberta_data',
 ]

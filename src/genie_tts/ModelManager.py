@@ -8,7 +8,7 @@ import gc
 import logging
 import os
 from dataclasses import dataclass
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Tuple
 
 import numpy as np
 import onnx
@@ -54,6 +54,62 @@ class GSVModel:
     VITS: InferenceSession
     PROMPT_ENCODER: Optional[InferenceSession] = None
     PROMPT_ENCODER_PATH: Optional[str] = None
+
+
+def _unique_paths(paths: List[str]) -> List[str]:
+    result: List[str] = []
+    seen: set[str] = set()
+    for path in paths:
+        normalized = os.path.normpath(path)
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        result.append(normalized)
+    return result
+
+
+def candidate_roberta_dirs(base_dir: str = ROBERTA_MODEL_DIR) -> List[str]:
+    dirs = [base_dir]
+    genie_data_dir = os.path.dirname(os.path.normpath(base_dir))
+    if os.path.isdir(genie_data_dir):
+        for entry in os.scandir(genie_data_dir):
+            if entry.is_dir() and "roberta" in entry.name.lower():
+                dirs.append(entry.path)
+    return _unique_paths(dirs)
+
+
+def resolve_roberta_assets(base_dir: str = ROBERTA_MODEL_DIR) -> Tuple[Optional[str], Optional[str]]:
+    model_names = ("RoBERTa.onnx", "model.onnx", "model_fp16.onnx")
+    tokenizer_rel_paths = (
+        os.path.join("roberta_tokenizer", "tokenizer.json"),
+        "tokenizer.json",
+    )
+
+    for directory in candidate_roberta_dirs(base_dir):
+        model_path = next(
+            (os.path.join(directory, name) for name in model_names if os.path.isfile(os.path.join(directory, name))),
+            None,
+        )
+        if model_path is None and os.path.isdir(directory):
+            fallback_onnx = sorted(
+                entry.path
+                for entry in os.scandir(directory)
+                if entry.is_file() and entry.name.lower().endswith(".onnx")
+            )
+            if fallback_onnx:
+                model_path = fallback_onnx[0]
+        tokenizer_path = next(
+            (
+                os.path.join(directory, rel_path)
+                for rel_path in tokenizer_rel_paths
+                if os.path.isfile(os.path.join(directory, rel_path))
+            ),
+            None,
+        )
+        if model_path and tokenizer_path:
+            return model_path, tokenizer_path
+
+    return None, None
 
 
 def load_session_with_fp16_conversion(
@@ -129,25 +185,29 @@ class ModelManager:
         self.roberta_model: Optional[InferenceSession] = None
         self.roberta_tokenizer: Optional[Tokenizer] = None
 
-    def load_roberta_model(self, model_path: str = GSVModelFile.ROBERTA_MODEL) -> bool:
-        if self.roberta_model is not None:
+    def load_roberta_model(self) -> bool:
+        if self.roberta_model is not None and self.roberta_tokenizer is not None:
             return True
-        if not os.path.exists(model_path):
-            # logger.warning(f'RoBERTa model does not exist: {model_path}. BERT features will not be used.')
+
+        model_path, tokenizer_path = resolve_roberta_assets()
+        if not model_path or not tokenizer_path:
+            logger.warning(
+                "RoBERTa assets not found. Looked under: %s",
+                ", ".join(candidate_roberta_dirs()),
+            )
             return False
+
         try:
             self.roberta_model = onnxruntime.InferenceSession(
                 model_path,
                 providers=self.providers,
             )
-            self.roberta_tokenizer = Tokenizer.from_file(
-                os.path.join(GSVModelFile.ROBERTA_TOKENIZER, 'tokenizer.json')
-            )
-            logger.info(f"Successfully loaded RoBERTa model.")
+            self.roberta_tokenizer = Tokenizer.from_file(tokenizer_path)
+            logger.info("Successfully loaded RoBERTa model from %s", model_path)
             return True
         except Exception as e:
             logger.error(
-                f"Error: Failed to load ONNX model '{GSVModelFile.ROBERTA_MODEL}'.\n"
+                f"Error: Failed to load ONNX model '{model_path}'.\n"
                 f"Details: {e}"
             )
         return False

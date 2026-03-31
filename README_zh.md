@@ -79,6 +79,17 @@ os.environ["GENIE_DATA_DIR"] = r"C:\path\to\your\GenieData"
 import genie_tts as genie
 
 # 库现在将从指定目录加载资源
+
+
+如果你想启用用于中文韵律增强的可选 Chinese RoBERTa 文本特征，也可以这样下载：
+
+```python
+import genie_tts as genie
+
+genie.download_roberta_data()
+# 或者：
+genie.download_genie_data(include_roberta=True)
+```
 ```
 
 ### ⚡️ 快速试用

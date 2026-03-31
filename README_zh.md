@@ -86,9 +86,12 @@ import genie_tts as genie
 ```python
 import genie_tts as genie
 
+# 只下载可选的 Chinese RoBERTa 资源
 genie.download_roberta_data()
-# 或者：
-genie.download_genie_data(include_roberta=True)
+
+# 或者直接走内置的完整资源下载流程，
+# 该流程现在也会顺带下载可选的 Chinese RoBERTa 资源
+genie.download_genie_data()
 ```
 
 这些 RoBERTa 特征仅用于**中文**路径，以改善中文韵律；

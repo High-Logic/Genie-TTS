@@ -91,9 +91,12 @@ to improve Chinese prosody, you can also download them with:
 ```python
 import genie_tts as genie
 
+# Download only the optional Chinese RoBERTa assets
 genie.download_roberta_data()
-# or:
-genie.download_genie_data(include_roberta=True)
+
+# Or use the built-in full resource download flow,
+# which now also downloads the optional Chinese RoBERTa assets
+genie.download_genie_data()
 ```
 
 These RoBERTa features are intended only for the **Chinese** path to improve Chinese prosody.

@@ -56,7 +56,7 @@ class GSVModel:
     PROMPT_ENCODER_PATH: Optional[str] = None
 
 
-# Deduplicate candidate directories while preserving search order.
+# 去重候选目录，同时保留搜索顺序，避免重复扫描相同路径。
 def _unique_paths(paths: List[str]) -> List[str]:
     result: List[str] = []
     seen: set[str] = set()
@@ -69,9 +69,10 @@ def _unique_paths(paths: List[str]) -> List[str]:
     return result
 
 
-# The original implementation assumed a fixed local RoBERTa layout
-# (RoBERTa.onnx + roberta_tokenizer/tokenizer.json). For upstream compatibility
-# we keep that layout first, then also search Hugging Face ONNX-style folders.
+# 原实现假设 RoBERTa 资源始终采用固定本地目录布局
+# （RoBERTa.onnx + roberta_tokenizer/tokenizer.json）。
+# 这里保留这套旧布局优先级，同时补充对 Hugging Face ONNX 目录布局的搜索，
+# 这样既不破坏旧用法，也能兼容新的导出结果。
 def candidate_roberta_dirs(base_dir: str = ROBERTA_MODEL_DIR) -> List[str]:
     dirs = [base_dir]
     genie_data_dir = os.path.dirname(os.path.normpath(base_dir))
@@ -82,9 +83,9 @@ def candidate_roberta_dirs(base_dir: str = ROBERTA_MODEL_DIR) -> List[str]:
     return _unique_paths(dirs)
 
 
-# Resolve both the model file and tokenizer path, because newer ONNX exports
-# may ship as model.onnx / model_fp16.onnx + tokenizer.json instead of the
-# original hard-coded RoBERTa.onnx + roberta_tokenizer layout.
+# 同时解析模型文件和 tokenizer 路径。
+# 这是因为较新的 ONNX 导出结果可能使用 model.onnx / model_fp16.onnx
+# + tokenizer.json，而不是原先写死的 RoBERTa.onnx + roberta_tokenizer 布局。
 def resolve_roberta_assets(base_dir: str = ROBERTA_MODEL_DIR) -> Tuple[Optional[str], Optional[str]]:
     model_names = ("RoBERTa.onnx", "model.onnx", "model_fp16.onnx")
     tokenizer_rel_paths = (
@@ -193,8 +194,8 @@ class ModelManager:
         self.roberta_tokenizer: Optional[Tokenizer] = None
 
     def load_roberta_model(self) -> bool:
-        # Replace the original fixed-path loading logic with asset resolution so
-        # both the historical local layout and Hugging Face ONNX layouts work.
+        # 将原来的“固定路径加载”替换为“先解析资源路径再加载”。
+        # 这样历史本地目录布局和 Hugging Face ONNX 布局都能正常工作。
         if self.roberta_model is not None and self.roberta_tokenizer is not None:
             return True
 

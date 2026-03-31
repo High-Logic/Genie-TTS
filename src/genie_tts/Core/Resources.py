@@ -16,7 +16,7 @@ def _resolve_roberta_download(model_variant: str) -> tuple[str, list[str]]:
 
 
 def download_roberta_data(model_variant: str = "fp32") -> str:
-    """Download the optional Chinese RoBERTa assets used for Chinese prosody only."""
+    """下载仅用于中文韵律修复的可选 Chinese RoBERTa 资源。"""
     model_file, allow_patterns = _resolve_roberta_download(model_variant)
     target_dir = os.path.join(GENIE_DATA_DIR, ROBERTA_DIRNAME)
 
@@ -37,9 +37,8 @@ def download_roberta_data(model_variant: str = "fp32") -> str:
 
 
 def download_genie_data() -> None:
-    # Keep the original GenieData download behavior unchanged, and append the
-    # optional Chinese RoBERTa assets afterwards so existing users still get the
-    # same entry point / prompt flow.
+    # 保持原来的 GenieData 下载行为不变，只是在后面追加下载可选的
+    # Chinese RoBERTa 资源，避免改动现有用户熟悉的入口和交互流程。
     print(f"🚀 Starting download Genie-TTS resources… This may take a few moments. ⏳")
     snapshot_download(
         repo_id=GENIE_DATA_REPO_ID,
@@ -48,8 +47,8 @@ def download_genie_data() -> None:
         local_dir=".",
         local_dir_use_symlinks=True,  # 软链接
     )
-    # Chinese RoBERTa is added here so users who choose the built-in resource
-    # download path also receive the assets needed for Chinese prosody repair.
+    # 在这里顺带下载 Chinese RoBERTa，确保走内置资源下载流程的用户
+    # 也能拿到中文韵律修复所需的资源。
     download_roberta_data()
     print("✅ Genie-TTS resources downloaded successfully.")
 
@@ -113,6 +112,6 @@ if not os.path.exists(GENIE_DATA_DIR):
 # ---- Run directory checks ----
 ensure_exists(HUBERT_MODEL_DIR, "HUBERT_MODEL_DIR")
 ensure_exists(SV_MODEL, "SV_MODEL")
-# NOTE: We intentionally do not require RoBERTa assets here, because they are
-# only meant for the Chinese prosody path and should remain optional.
+# 注意：这里故意不把 RoBERTa 资源设为强依赖检查，
+# 因为它只服务于中文韵律路径，应当保持为可选资源。
 # ensure_exists(ROBERTA_MODEL_DIR, "ROBERTA_MODEL_DIR")

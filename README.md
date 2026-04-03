@@ -222,7 +222,7 @@ genie.start_server(
 
 * [x] **🚀 Model Compatibility**
 
-    * [x] Support for `V2Proplus`.
+    * [x] Support for `V2ProPlus`.
     * [ ] Support for `V3`, `V4`, and more.
 
 * [x] **📦 Easy Deployment**

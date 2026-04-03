@@ -216,7 +216,7 @@ genie.start_server(
 
 * [x] **🚀 模型兼容性**
 
-    * [x] 支持 `V2Proplus`。
+    * [x] 支持 `V2ProPlus`。
     * [ ] 支持 `V3`、`V4` 等更多版本。
 
 * [x] **📦 简易部署**

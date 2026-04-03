@@ -139,7 +139,7 @@ import genie_tts as genie
 genie.load_character(
     character_name='<CHARACTER_NAME>',  # 替换为您的角色名称
     onnx_model_dir=r"<PATH_TO_CHARACTER_ONNX_MODEL_DIR>",  # 包含 ONNX 模型的文件夹
-    language='<LANGUAGE_CODE>',  # 替换为语言代码，例如 'en', 'zh', 'jp'
+    language='<LANGUAGE_CODE>',  # 替换为语言代码，例如 'en', 'zh', 'jp', 'kr'
 )
 
 # 第二步：设置参考音频（用于情感和语调克隆）

@@ -145,7 +145,7 @@ import genie_tts as genie
 genie.load_character(
     character_name='<CHARACTER_NAME>',  # Replace with your character name
     onnx_model_dir=r"<PATH_TO_CHARACTER_ONNX_MODEL_DIR>",  # Folder containing ONNX model
-    language='<LANGUAGE_CODE>',  # Replace with language code, e.g., 'en', 'zh', 'jp'
+    language='<LANGUAGE_CODE>',  # Replace with language code, e.g., 'en', 'zh', 'jp', 'kr'
 )
 
 # Step 2: Set reference audio (for emotion and intonation cloning)

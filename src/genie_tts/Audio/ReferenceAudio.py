@@ -11,18 +11,20 @@ from typing import Optional, Dict
 
 
 class ReferenceAudio:
-    _prompt_cache: Dict[str, 'ReferenceAudio'] = LRUCacheDict(
+    _prompt_cache: Dict[tuple[str, str], 'ReferenceAudio'] = LRUCacheDict(
         capacity=int(os.getenv('Max_Cached_Reference_Audio', '10')))
 
     def __new__(cls, prompt_wav: str, prompt_text: str, language: str):
-        if prompt_wav in cls._prompt_cache:
-            instance = cls._prompt_cache[prompt_wav]
-            if instance.text != prompt_text:  # 如果文本与缓存内记录的不同，则更新。
+        cache_key = (prompt_wav, language)
+        if cache_key in cls._prompt_cache:
+            instance = cls._prompt_cache[cache_key]
+            # 如果文本或语言与缓存内记录的不同，则更新。
+            if instance.text != prompt_text or instance.language != language:
                 instance.set_text(prompt_text, language=language)
             return instance
 
         instance = super().__new__(cls)
-        cls._prompt_cache[prompt_wav] = instance
+        cls._prompt_cache[cache_key] = instance
         return instance
 
     def __init__(self, prompt_wav: str, prompt_text: str, language: str):
@@ -31,6 +33,7 @@ class ReferenceAudio:
 
         # 文本相关。
         self.text: str = prompt_text
+        self.language: str = language
         self.phonemes_seq: Optional[np.ndarray] = None
         self.text_bert: Optional[np.ndarray] = None
         self.set_text(prompt_text, language=language)
@@ -58,6 +61,7 @@ class ReferenceAudio:
 
     def set_text(self, prompt_text: str, language: str) -> None:
         self.text = prompt_text
+        self.language = language
         self.phonemes_seq, self.text_bert = get_phones_and_bert(prompt_text, language=language)
 
     @classmethod

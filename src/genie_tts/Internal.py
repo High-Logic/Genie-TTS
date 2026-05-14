@@ -322,6 +322,102 @@ def stop() -> None:
     """
     tts_player.stop()
 
+def _tensor_element_count(dims):
+    count = 1
+    for dim in dims:
+        count *= int(dim)
+    return count
+
+
+def _tensor_type_size(onnx, data_type):
+    tensor_proto = onnx.TensorProto
+    return {
+        tensor_proto.FLOAT: 4,
+        tensor_proto.UINT8: 1,
+        tensor_proto.INT8: 1,
+        tensor_proto.UINT16: 2,
+        tensor_proto.INT16: 2,
+        tensor_proto.INT32: 4,
+        tensor_proto.INT64: 8,
+        tensor_proto.BOOL: 1,
+        tensor_proto.FLOAT16: 2,
+        tensor_proto.DOUBLE: 8,
+        tensor_proto.UINT32: 4,
+        tensor_proto.UINT64: 8,
+        tensor_proto.COMPLEX64: 8,
+        tensor_proto.COMPLEX128: 16,
+        tensor_proto.BFLOAT16: 2,
+    }.get(data_type)
+
+
+def _generate_vits_fp32_bin(output_dir: Union[str, PathLike]) -> bool:
+    """Generate vits_fp32.bin from vits_fp16.bin when vits_fp32.onnx expects fp32 external data."""
+    import numpy as np
+
+    output_dir = os.fspath(output_dir)
+    fp16_path = os.path.join(output_dir, "vits_fp16.bin")
+    fp32_path = os.path.join(output_dir, "vits_fp32.bin")
+
+    if not os.path.isfile(fp16_path):
+        return False
+
+    if os.path.isfile(fp32_path):
+        return False
+
+    data16 = np.fromfile(fp16_path, dtype=np.float16)
+    data32 = data16.astype(np.float32)
+    data32.tofile(fp32_path)
+
+    logger.info("Generated missing vits_fp32.bin from vits_fp16.bin: %s", fp32_path)
+    return True
+
+
+def _fix_external_data_lengths(output_dir: Union[str, PathLike]) -> int:
+    """Fix external_data.length fields according to tensor dtype and shape."""
+    import onnx
+
+    output_dir = os.fspath(output_dir)
+    onnx_path = os.path.join(output_dir, "vits_fp32.onnx")
+
+    if not os.path.isfile(onnx_path):
+        return 0
+
+    model = onnx.load(onnx_path, load_external_data=False)
+    fixed_count = 0
+
+    for tensor in model.graph.initializer:
+        if tensor.data_location != onnx.TensorProto.EXTERNAL:
+            continue
+
+        item_size = _tensor_type_size(onnx, tensor.data_type)
+        if item_size is None:
+            continue
+
+        expected_length = _tensor_element_count(tensor.dims) * item_size
+
+        for entry in tensor.external_data:
+            if entry.key == "length" and int(entry.value) != expected_length:
+                entry.value = str(expected_length)
+                fixed_count += 1
+                break
+
+    if fixed_count:
+        onnx.save(model, onnx_path)
+        logger.info("Fixed %d external_data.length fields in %s", fixed_count, onnx_path)
+
+    return fixed_count
+
+
+def _fix_vits_fp32_external_data(output_dir: Union[str, PathLike]) -> None:
+    output_dir = os.fspath(output_dir)
+    onnx_path = os.path.join(output_dir, "vits_fp32.onnx")
+    fp16_path = os.path.join(output_dir, "vits_fp16.bin")
+
+    if not os.path.isfile(onnx_path) or not os.path.isfile(fp16_path):
+        return
+
+    _generate_vits_fp32_bin(output_dir)
+    _fix_external_data_lengths(output_dir)
 
 def convert_to_onnx(
         torch_ckpt_path: Union[str, PathLike],
@@ -355,6 +451,8 @@ def convert_to_onnx(
         torch_ckpt_path=torch_ckpt_path,
         output_dir=output_dir,
     )
+
+    _fix_vits_fp32_external_data(output_dir)
 
 
 def clear_reference_audio_cache() -> None:

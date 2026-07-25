@@ -86,6 +86,12 @@ def split_language(text: str) -> list[dict[Literal['language', 'content'], str]]
 def get_phones_and_bert(prompt_text: str, language: str = 'japanese') -> Tuple[np.ndarray, np.ndarray]:
     """获取 phones 序列和 bert 特征, 考虑混合语言问题"""
 
+
+    # Auto-detect: Chinese G2P deletes all English letters via pattern_filter/pattern_eng,
+    # causing empty phoneme output and random noise. Switch to hybrid mode.
+    if language.lower() == 'chinese' and re.search(r'[a-zA-Z]', prompt_text):
+        language = 'hybrid-chinese-english'
+
     if language.lower() == 'hybrid-chinese-english':
         split = split_language(prompt_text)
 

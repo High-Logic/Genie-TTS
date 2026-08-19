@@ -51,6 +51,9 @@ dependencies = [
     "eunjeon"
 ]
 
+[project.optional-dependencies]
+gui = ["PySide6"]
+
 
 [project.urls]
 Homepage = "https://github.com/High-Logic/Genie"

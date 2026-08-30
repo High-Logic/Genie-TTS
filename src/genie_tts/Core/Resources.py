@@ -103,11 +103,16 @@ ROBERTA_MODEL_DIR: str = os.getenv(
     f"{GENIE_DATA_DIR}/RoBERTa"
 )
 
+AUTO_DOWNLOAD = os.getenv("GENIE_AUTO_DOWNLOAD", "").lower() in ("1", "true", "y", "yes")
+
 if not os.path.exists(GENIE_DATA_DIR):
-    print("⚠️ GenieData folder not found.")
-    choice = input("Would you like to download it automatically from HuggingFace? (y/N): ").strip().lower()
-    if choice == "y":
+    if AUTO_DOWNLOAD:
         download_genie_data()
+    else:
+        print("Warning: GenieData folder not found.")
+        choice = input("Would you like to download it automatically from HuggingFace? (y/N): ").strip().lower()
+        if choice == "y":
+            download_genie_data()
 
 # ---- Run directory checks ----
 ensure_exists(HUBERT_MODEL_DIR, "HUBERT_MODEL_DIR")

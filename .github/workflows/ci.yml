@@ -1,0 +1,71 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 安装 ruff
+        run: pip install ruff==0.16.5
+      - name: 静态检查
+        run: ruff check .
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: 安装系统依赖
+        run: sudo apt-get update -y && sudo apt-get install -y libportaudio2 mecab libmecab-dev mecab-ipadic
+      - name: 缓存 apt 包
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: apt-archives-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
+          restore-keys: apt-archives-${{ runner.os }}-
+      # 使用 uv 管理 Python 版本与虚拟环境
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      # 按 uv.lock 安装项目本体与 dev/gui extras，自动创建虚拟环境
+      - name: 安装项目
+        run: uv sync --extra dev --extra gui
+      # torch 未安装，GUI/Converter 导入测试按 importorskip 跳过
+      - name: 冒烟测试
+        run: uv run pytest
+
+  wheel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 构建轮子
+        run: pip install build && python -m build --wheel
+      - name: 检查轮子内容
+        run: |
+          python - <<'EOF'
+          import pathlib
+          import sys
+          import zipfile
+
+          whl = next(pathlib.Path("dist").glob("*.whl"))
+          names = zipfile.ZipFile(whl).namelist()
+          missing = [
+              prefix
+              for prefix in ("genie_tts/Data/", "genie_tts/GUI/", "genie_tts/Converter/v2ProPlus/")
+              if not any(n.startswith(prefix) for n in names)
+          ]
+          if missing:
+              sys.exit(f"FAIL: 轮子缺少 {', '.join(missing)}（{whl.name}）")
+          print(f"OK: {whl.name} 共 {len(names)} 个条目")
+          EOF

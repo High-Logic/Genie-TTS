@@ -53,10 +53,36 @@ dependencies = [
 
 [project.optional-dependencies]
 gui = ["PySide6"]
+dev = ["pytest"]
 
 
 [project.urls]
 Homepage = "https://github.com/High-Logic/Genie"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B"]
+ignore = [
+    "E402",  # 导入顺序依赖导入期副作用（sys.path 修正等）
+    "E501",  # 暂不强制约束行长
+    "E701",  # 移植代码中的单行多语句写法
+    "E721",  # 存量类型比较写法
+    "F401",  # 有意保留的未使用导入
+    "F541",  # 无占位符的 f-string
+    "W291",  # 空白问题
+    "W292",  # 同上
+    "W293",  # 同上
+    "B007",  # 未使用的循环变量需逐一确认
+    "B008",  # 默认参数中的函数调用需逐一确认
+    "B904",  # 异常衔接（from/from None）需逐一确认
+    "B905",  # zip 改 strict 可能改变行为
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

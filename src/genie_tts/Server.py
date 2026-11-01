@@ -1,6 +1,5 @@
 import asyncio
-import os
-from typing import AsyncIterator, Optional, Callable, Union, Dict
+from typing import AsyncIterator, Optional, Union
 import logging
 
 import uvicorn
@@ -8,16 +7,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from .Audio.ReferenceAudio import ReferenceAudio
-from .Core.TTSPlayer import tts_player
-from .ModelManager import model_manager
-from .Utils.Shared import context
-from .Utils.Language import normalize_language
+from . import Internal
 
 logger = logging.getLogger(__name__)
-
-_reference_audios: Dict[str, dict] = {}
-SUPPORTED_AUDIO_EXTS = {'.wav', '.flac', '.ogg', '.aiff', '.aif'}
 
 app = FastAPI()
 
@@ -49,10 +41,10 @@ class TTSPayload(BaseModel):
 @app.post("/load_character")
 def load_character_endpoint(payload: CharacterPayload):
     try:
-        model_manager.load_character(
+        Internal.load_character(
             character_name=payload.character_name,
-            model_dir=payload.onnx_model_dir,
-            language=normalize_language(payload.language),
+            onnx_model_dir=payload.onnx_model_dir,
+            language=payload.language,
         )
         return {"status": "success", "message": f"Character '{payload.character_name}' loaded."}
     except Exception as e:
@@ -62,7 +54,7 @@ def load_character_endpoint(payload: CharacterPayload):
 @app.post("/unload_character")
 def unload_character_endpoint(payload: UnloadCharacterPayload):
     try:
-        model_manager.remove_character(character_name=payload.character_name)
+        Internal.unload_character(character_name=payload.character_name)
         return {"status": "success", "message": f"Character '{payload.character_name}' unloaded."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -70,45 +62,16 @@ def unload_character_endpoint(payload: UnloadCharacterPayload):
 
 @app.post("/set_reference_audio")
 def set_reference_audio_endpoint(payload: ReferenceAudioPayload):
-    ext = os.path.splitext(payload.audio_path)[1].lower()
-    if ext not in SUPPORTED_AUDIO_EXTS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Audio format '{ext}' is not supported. Supported formats: {SUPPORTED_AUDIO_EXTS}",
-        )
-    _reference_audios[payload.character_name] = {
-        'audio_path': payload.audio_path,
-        'audio_text': payload.audio_text,
-        'language': normalize_language(payload.language),
-    }
-    return {"status": "success", "message": f"Reference audio for '{payload.character_name}' set."}
-
-
-def run_tts_in_background(
-        character_name: str,
-        text: str,
-        split_sentence: bool,
-        save_path: Optional[str],
-        chunk_callback: Callable[[Optional[bytes]], None]
-):
     try:
-        context.current_speaker = character_name
-        context.current_prompt_audio = ReferenceAudio(
-            prompt_wav=_reference_audios[character_name]['audio_path'],
-            prompt_text=_reference_audios[character_name]['audio_text'],
-            language=_reference_audios[character_name]['language'],
+        Internal.set_reference_audio(
+            character_name=payload.character_name,
+            audio_path=payload.audio_path,
+            audio_text=payload.audio_text,
+            language=payload.language,
         )
-        tts_player.start_session(
-            play=False,
-            split=split_sentence,
-            save_path=save_path,
-            chunk_callback=chunk_callback,
-        )
-        tts_player.feed(text)
-        tts_player.end_session()
-        tts_player.wait_for_tts_completion()
+        return {"status": "success", "message": f"Reference audio for '{payload.character_name}' set."}
     except Exception as e:
-        logger.error(f"Error in TTS background task: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 async def audio_stream_generator(queue: asyncio.Queue) -> AsyncIterator[bytes]:
@@ -121,9 +84,6 @@ async def audio_stream_generator(queue: asyncio.Queue) -> AsyncIterator[bytes]:
 
 @app.post("/tts")
 async def tts_endpoint(payload: TTSPayload):
-    if payload.character_name not in _reference_audios:
-        raise HTTPException(status_code=404, detail="Character not found or reference audio not set.")
-
     loop = asyncio.get_running_loop()
     stream_queue: asyncio.Queue[Union[bytes, None]] = asyncio.Queue()
 
@@ -132,21 +92,50 @@ async def tts_endpoint(payload: TTSPayload):
 
     loop.run_in_executor(
         None,
-        run_tts_in_background,
+        _run_tts_in_background,
         payload.character_name,
         payload.text,
         payload.split_sentence,
         payload.save_path,
-        tts_chunk_callback
+        tts_chunk_callback,
     )
 
     return StreamingResponse(audio_stream_generator(stream_queue), media_type="audio/wav")
 
 
+def _run_tts_in_background(
+        character_name: str,
+        text: str,
+        split_sentence: bool,
+        save_path: Optional[str],
+        chunk_callback,
+):
+    try:
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        async def run():
+            async for chunk in Internal.tts_async(
+                character_name=character_name,
+                text=text,
+                play=False,
+                split_sentence=split_sentence,
+                save_path=save_path,
+            ):
+                chunk_callback(chunk)
+        loop.run_until_complete(run())
+    except ValueError as e:
+        logger.error(f"TTS error: {e}")
+    except Exception as e:
+        logger.error(f"Error in TTS background task: {e}", exc_info=True)
+    finally:
+        chunk_callback(None)
+
+
 @app.post("/stop")
 def stop_endpoint():
     try:
-        tts_player.stop()
+        Internal.stop()
         return {"status": "success", "message": "TTS stopped."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -155,7 +144,7 @@ def stop_endpoint():
 @app.post("/clear_reference_audio_cache")
 def clear_reference_audio_cache_endpoint():
     try:
-        ReferenceAudio.clear_cache()
+        Internal.clear_reference_audio_cache()
         return {"status": "success", "message": "Reference audio cache cleared."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

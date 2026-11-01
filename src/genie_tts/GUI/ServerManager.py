@@ -1,9 +1,6 @@
 from PySide6.QtCore import Signal, QThread
 
-from ..Utils.Shared import context
-from ..Internal import load_character, set_reference_audio
-from ..Core.Inference import tts_client
-from ..ModelManager import model_manager
+from .. import Internal
 
 
 class InferenceWorker(QThread):
@@ -18,7 +15,7 @@ class InferenceWorker(QThread):
     def run(self) -> None:
         try:
             if self.mode == 'load_character':
-                load_character(
+                Internal.load_character(
                     character_name=self.req['character_name'],
                     onnx_model_dir=self.req['onnx_model_dir'],
                     language=self.req['language'],
@@ -26,7 +23,7 @@ class InferenceWorker(QThread):
                 self.finished.emit(True, "导入角色完成", None)
 
             elif self.mode == 'set_reference_audio':
-                set_reference_audio(
+                Internal.set_reference_audio(
                     character_name=self.req['character_name'],
                     audio_path=self.req['audio_path'],
                     audio_text=self.req['audio_text'],
@@ -35,27 +32,16 @@ class InferenceWorker(QThread):
                 self.finished.emit(True, "设置参考音频完成", None)
 
             elif self.mode == 'tts':
-                gsv_model = model_manager.get(self.req['character_name'])
-                tts_client.stop_event.clear()
-                audio_chunk = tts_client.tts(
+                audio_chunk = Internal.tts_to_numpy(
+                    character_name=self.req['character_name'],
                     text=self.req['text'],
-                    prompt_audio=context.current_prompt_audio,
-                    encoder=gsv_model.T2S_ENCODER,
-                    first_stage_decoder=gsv_model.T2S_FIRST_STAGE_DECODER,
-                    stage_decoder=gsv_model.T2S_STAGE_DECODER,
-                    vocoder=gsv_model.VITS,
-                    prompt_encoder=gsv_model.PROMPT_ENCODER,
-                    language=gsv_model.LANGUAGE,
                 )
                 audio_chunk = audio_chunk.squeeze()
-                try:
-                    return_data = {
-                        "sample_rate": 32000,
-                        "audio_list": [audio_chunk],
-                    }
-                    self.finished.emit(True, "推理完成", return_data)
-                except Exception as e:
-                    self.finished.emit(False, f"数据解析失败: {e}", None)
+                return_data = {
+                    "sample_rate": 32000,
+                    "audio_list": [audio_chunk],
+                }
+                self.finished.emit(True, "推理完成", return_data)
 
         except Exception as e:
             self.finished.emit(False, f"请求异常: {str(e)}", None)

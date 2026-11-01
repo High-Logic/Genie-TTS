@@ -24,6 +24,7 @@ from pathlib import Path
 import json
 import asyncio
 from typing import AsyncIterator, Optional, Union, Dict
+import numpy as np
 
 from .Audio.ReferenceAudio import ReferenceAudio
 from .Core.Resources import ensure_exists, Chinese_G2P_DIR, English_G2P_DIR
@@ -307,6 +308,36 @@ def tts(
     tts_player.feed(text)
     tts_player.end_session()
     tts_player.wait_for_tts_completion()
+
+
+def tts_to_numpy(
+        character_name: str,
+        text: str,
+        split_sentence: bool = False,
+) -> Optional[np.ndarray]:
+    if character_name not in _reference_audios:
+        raise ValueError("Please call 'set_reference_audio' first to set the reference audio.")
+
+    context.current_speaker = character_name
+    context.current_prompt_audio = ReferenceAudio(
+        prompt_wav=_reference_audios[character_name]['audio_path'],
+        prompt_text=_reference_audios[character_name]['audio_text'],
+        language=_reference_audios[character_name]['language'],
+    )
+
+    gsv_model = model_manager.get(character_name)
+    from .Core.Inference import tts_client
+    audio_chunk = tts_client.tts(
+        text=text,
+        prompt_audio=context.current_prompt_audio,
+        encoder=gsv_model.T2S_ENCODER,
+        first_stage_decoder=gsv_model.T2S_FIRST_STAGE_DECODER,
+        stage_decoder=gsv_model.T2S_STAGE_DECODER,
+        vocoder=gsv_model.VITS,
+        prompt_encoder=gsv_model.PROMPT_ENCODER,
+        language=gsv_model.LANGUAGE,
+    )
+    return audio_chunk
 
 
 def wait_for_playback_done() -> None:
